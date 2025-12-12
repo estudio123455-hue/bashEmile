@@ -7,9 +7,23 @@ import 'react-native-reanimated';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { TicketProvider } from '@/context/TicketContext';
 
+// Pre-warm the backend to reduce cold start delay
+const API_BASE_URL = __DEV__ 
+  ? 'http://localhost:3001'
+  : 'https://backend-estudio123455-hues-projects.vercel.app';
+
+const warmUpBackend = () => {
+  fetch(`${API_BASE_URL}/health`).catch(() => {});
+};
+
 function RootLayoutNav() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
+
+  // Pre-warm backend on app load
+  useEffect(() => {
+    warmUpBackend();
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
