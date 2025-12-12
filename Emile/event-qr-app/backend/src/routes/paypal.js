@@ -314,4 +314,175 @@ router.post('/demo-payment', auth, async (req, res) => {
   }
 });
 
+// ============ PREMIUM SUBSCRIPTION ENDPOINTS ============
+
+const PREMIUM_PRICE_USD = 12.99; // Premium price in USD
+
+// POST /api/paypal/create-premium-order - Create PayPal order for Premium subscription
+router.post('/create-premium-order', auth, async (req, res) => {
+  try {
+    // Check if user is already premium
+    const existingUser = await require('../services/firebaseService').userService.findById(req.userId);
+    if (existingUser?.isPremium) {
+      return res.status(400).json({
+        success: false,
+        error: 'User is already Premium',
+      });
+    }
+
+    const orderId = `PREM-${Date.now()}-${uuidv4().substring(0, 8)}`;
+    
+    const order = {
+      orderId,
+      userId: req.userId,
+      type: 'premium',
+      amountUSD: PREMIUM_PRICE_USD,
+      status: 'created',
+      paypalOrderId: null,
+      createdAt: new Date().toISOString(),
+    };
+
+    const paypalClient = client();
+    
+    if (paypalClient) {
+      const request = new paypal.orders.OrdersCreateRequest();
+      request.prefer('return=representation');
+      request.requestBody({
+        intent: 'CAPTURE',
+        purchase_units: [{
+          reference_id: orderId,
+          description: 'EventQR Premium - Publish unlimited events',
+          amount: {
+            currency_code: 'USD',
+            value: PREMIUM_PRICE_USD.toFixed(2),
+          },
+          items: [{
+            name: 'EventQR Premium',
+            description: 'Lifetime access to publish events',
+            unit_amount: {
+              currency_code: 'USD',
+              value: PREMIUM_PRICE_USD.toFixed(2),
+            },
+            quantity: '1',
+            category: 'DIGITAL_GOODS',
+          }],
+        }],
+        application_context: {
+          brand_name: 'EventQR',
+          landing_page: 'NO_PREFERENCE',
+          user_action: 'PAY_NOW',
+          return_url: `${process.env.FRONTEND_URL || 'http://localhost:8081'}/premium`,
+          cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:8081'}/premium`,
+        },
+      });
+
+      const paypalOrder = await paypalClient.execute(request);
+      order.paypalOrderId = paypalOrder.result.id;
+      order.approvalUrl = paypalOrder.result.links.find(l => l.rel === 'approve')?.href;
+    } else {
+      // Demo mode
+      order.paypalOrderId = `DEMO-${orderId}`;
+      order.approvalUrl = null;
+    }
+
+    await orderService.create(order);
+
+    res.json({
+      success: true,
+      data: {
+        orderId: order.orderId,
+        paypalOrderId: order.paypalOrderId,
+        approvalUrl: order.approvalUrl,
+        amountUSD: PREMIUM_PRICE_USD,
+      },
+    });
+  } catch (error) {
+    console.error('Create premium order error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error creating premium order',
+    });
+  }
+});
+
+// POST /api/paypal/capture-premium-order - Capture Premium payment and activate isPremium
+router.post('/capture-premium-order', auth, async (req, res) => {
+  try {
+    const { orderId, paypalOrderId } = req.body;
+
+    const order = await orderService.findByUserAndOrderId(req.userId, orderId);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found',
+      });
+    }
+
+    if (order.type !== 'premium') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid order type',
+      });
+    }
+
+    if (order.status === 'completed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Order already completed',
+      });
+    }
+
+    let captureId = null;
+    const paypalClient = client();
+
+    if (paypalClient && !order.paypalOrderId.startsWith('DEMO-')) {
+      const request = new paypal.orders.OrdersCaptureRequest(paypalOrderId);
+      request.requestBody({});
+      
+      const capture = await paypalClient.execute(request);
+      
+      if (capture.result.status !== 'COMPLETED') {
+        return res.status(400).json({
+          success: false,
+          error: 'Payment not completed',
+        });
+      }
+
+      captureId = capture.result.purchase_units[0].payments.captures[0].id;
+    } else {
+      // Demo mode
+      captureId = `DEMO-CAP-${Date.now()}`;
+    }
+
+    // Update order status
+    await orderService.update(orderId, {
+      status: 'completed',
+      paypalCaptureId: captureId,
+      completedAt: new Date().toISOString(),
+    });
+
+    // SECURITY: Activate Premium from backend only after payment verification
+    const { userService } = require('../services/firebaseService');
+    await userService.activatePremium(req.userId);
+
+    console.log('Premium activated for user:', req.userId);
+
+    res.json({
+      success: true,
+      data: {
+        orderId: order.orderId,
+        captureId,
+        status: 'completed',
+        message: 'Premium activated successfully',
+      },
+    });
+  } catch (error) {
+    console.error('Capture premium order error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error capturing premium payment',
+    });
+  }
+});
+
 module.exports = router;
