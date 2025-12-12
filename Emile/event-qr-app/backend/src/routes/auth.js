@@ -107,6 +107,56 @@ router.post('/sync', auth, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/auth/fix-role
+ * TEMPORARY: Fix role for existing users who were affected by the bug
+ * This should be removed after migration is complete
+ */
+router.post('/fix-role', auth, async (req, res) => {
+  try {
+    const { targetRole } = req.body;
+    
+    // Validate role
+    if (!['user', 'organizer'].includes(targetRole)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid role. Must be "user" or "organizer"',
+      });
+    }
+    
+    // Update user's role
+    const updatedUser = await userService.update(req.userId, { role: targetRole });
+    
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+    
+    console.log('Fix-role: User', req.userId, 'role changed to:', targetRole);
+    
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: updatedUser.id || req.userId,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          role: updatedUser.role,
+        },
+      },
+      message: `Role updated to ${targetRole}`,
+    });
+  } catch (error) {
+    console.error('Fix-role error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error fixing role',
+    });
+  }
+});
+
 // GET /api/auth/me - Get current user profile
 router.get('/me', auth, async (req, res) => {
   try {
