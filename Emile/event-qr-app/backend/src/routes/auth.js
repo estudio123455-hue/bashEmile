@@ -4,9 +4,19 @@ const { userService } = require('../services/firebaseService');
 
 const router = express.Router();
 
+// Helper to format user response with premium status
+const formatUserResponse = (user, premiumStatus) => ({
+  id: user.id || user.uid,
+  name: user.name,
+  email: user.email,
+  avatar: user.avatar,
+  premium: user.premium || null,
+  premiumStatus: premiumStatus || { status: 'none', daysRemaining: 0, canPublish: false },
+});
+
 /**
  * POST /api/auth/register
- * Register a new user (all users start as free)
+ * Register a new user (all users start with 10-day free trial)
  */
 router.post('/register', auth, async (req, res) => {
   try {
@@ -16,36 +26,28 @@ router.post('/register', auth, async (req, res) => {
       return res.json({
         success: true,
         data: {
-          user: {
-            id: existingUser.id || req.userId,
-            name: existingUser.name,
-            email: existingUser.email,
-            isPremium: existingUser.isPremium || false,
-            avatar: existingUser.avatar,
-          },
+          user: formatUserResponse(existingUser, req.user.premiumStatus),
         },
         message: 'User already registered',
       });
     }
     
+    // New user gets 10-day free trial
     const newUser = await userService.createFromFirebase({
       uid: req.userId,
       email: req.user.email,
       name: req.user.name || req.user.email?.split('@')[0] || 'Usuario',
     });
     
+    // Calculate premium status for new user
+    const premiumStatus = userService.getPremiumStatus(newUser);
+    
     res.status(201).json({
       success: true,
       data: {
-        user: {
-          id: newUser.id || req.userId,
-          name: newUser.name,
-          email: newUser.email,
-          isPremium: newUser.isPremium || false,
-          avatar: newUser.avatar,
-        },
+        user: formatUserResponse(newUser, premiumStatus),
       },
-      message: 'User registered successfully',
+      message: 'User registered successfully. You have a 10-day free trial!',
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -59,6 +61,7 @@ router.post('/register', auth, async (req, res) => {
 /**
  * POST /api/auth/sync
  * Sync Firebase user with backend database
+ * Returns current premium status calculated by backend
  */
 router.post('/sync', auth, async (req, res) => {
   try {
@@ -67,13 +70,7 @@ router.post('/sync', auth, async (req, res) => {
     res.json({
       success: true,
       data: {
-        user: {
-          id: user.id || user.uid || req.userId,
-          name: user.name,
-          email: user.email,
-          isPremium: user.isPremium || false,
-          avatar: user.avatar,
-        },
+        user: formatUserResponse(user, user.premiumStatus),
       },
     });
   } catch (error) {
@@ -85,18 +82,12 @@ router.post('/sync', auth, async (req, res) => {
   }
 });
 
-// GET /api/auth/me - Get current user profile
+// GET /api/auth/me - Get current user profile with premium status
 router.get('/me', auth, async (req, res) => {
   try {
     res.json({
       success: true,
-      data: {
-        id: req.user.id || req.user.uid,
-        name: req.user.name,
-        email: req.user.email,
-        isPremium: req.user.isPremium || false,
-        avatar: req.user.avatar,
-      },
+      data: formatUserResponse(req.user, req.user.premiumStatus),
     });
   } catch (error) {
     res.status(500).json({
@@ -124,15 +115,11 @@ router.put('/profile', auth, async (req, res) => {
       });
     }
 
+    const premiumStatus = userService.getPremiumStatus(user);
+
     res.json({
       success: true,
-      data: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        isPremium: user.isPremium || false,
-        avatar: user.avatar,
-      },
+      data: formatUserResponse(user, premiumStatus),
     });
   } catch (error) {
     res.status(500).json({
@@ -145,7 +132,7 @@ router.put('/profile', auth, async (req, res) => {
 /**
  * POST /api/auth/activate-premium
  * Activate premium for current user (called after payment verification)
- * In production, this should be called from a webhook after payment confirmation
+ * Changes status from trial/expired to active (permanent)
  */
 router.post('/activate-premium', auth, async (req, res) => {
   try {
@@ -161,12 +148,7 @@ router.post('/activate-premium', auth, async (req, res) => {
     res.json({
       success: true,
       data: {
-        user: {
-          id: updatedUser.id,
-          name: updatedUser.name,
-          email: updatedUser.email,
-          isPremium: true,
-        },
+        user: formatUserResponse(updatedUser, { status: 'active', daysRemaining: null, canPublish: true }),
       },
       message: 'Premium activated successfully',
     });

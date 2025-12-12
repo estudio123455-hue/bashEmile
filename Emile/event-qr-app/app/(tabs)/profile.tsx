@@ -98,15 +98,22 @@ export default function ProfileScreen() {
               <Ionicons name="diamond" size={20} color="#fbbf24" />
             </View>
             <Text style={styles.menuItemText}>
-              {user?.isPremium ? 'Mi Premium' : 'Hazte Premium'}
+              {user?.premiumStatus?.status === 'active' ? 'Mi Premium' : 
+               user?.premiumStatus?.status === 'trial' ? 'Premium Trial' : 'Hazte Premium'}
             </Text>
           </View>
-          {user?.isPremium ? (
+          {user?.premiumStatus?.status === 'active' ? (
             <View style={styles.premiumBadge}>
               <Text style={styles.premiumBadgeText}>Activo</Text>
             </View>
+          ) : user?.premiumStatus?.status === 'trial' ? (
+            <View style={styles.trialBadge}>
+              <Text style={styles.trialBadgeText}>{user.premiumStatus.daysRemaining}d</Text>
+            </View>
           ) : (
-            <Ionicons name="chevron-forward" size={20} color="#64748b" />
+            <View style={styles.expiredBadge}>
+              <Text style={styles.expiredBadgeText}>Expirado</Text>
+            </View>
           )}
         </TouchableOpacity>
 
@@ -303,6 +310,28 @@ const styles = StyleSheet.create({
   },
   premiumBadgeText: {
     color: '#10b981',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  trialBadge: {
+    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  trialBadgeText: {
+    color: '#6366f1',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  expiredBadge: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  expiredBadgeText: {
+    color: '#ef4444',
     fontSize: 12,
     fontWeight: '600',
   },

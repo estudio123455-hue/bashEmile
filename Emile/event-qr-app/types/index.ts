@@ -1,8 +1,24 @@
+export type PremiumStatus = 'trial' | 'active' | 'expired' | 'none';
+
+export interface PremiumStatusInfo {
+  status: PremiumStatus;
+  daysRemaining: number | null;
+  canPublish: boolean;
+}
+
+export interface Premium {
+  status: PremiumStatus;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  activatedAt: string | null;
+}
+
 export interface User {
   id: string;
   email: string;
   name: string;
-  isPremium?: boolean;
+  premium?: Premium | null;
+  premiumStatus?: PremiumStatusInfo;
 }
 
 export interface Event {

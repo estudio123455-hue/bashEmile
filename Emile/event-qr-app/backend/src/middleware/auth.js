@@ -1,6 +1,37 @@
 const { admin } = require('../config/firebase');
 const { userService } = require('../services/firebaseService');
 
+// Calculate premium status from user data
+const calculatePremiumStatus = (user) => {
+  if (!user) return { status: 'none', daysRemaining: 0, canPublish: false };
+  
+  // If user has active premium (paid)
+  if (user.premium?.status === 'active') {
+    return { status: 'active', daysRemaining: null, canPublish: true };
+  }
+  
+  // If user is on trial
+  if (user.premium?.status === 'trial' && user.premium?.trialEndsAt) {
+    const now = new Date();
+    const trialEnd = new Date(user.premium.trialEndsAt);
+    const diffMs = trialEnd - now;
+    const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (daysRemaining > 0) {
+      return { status: 'trial', daysRemaining, canPublish: true };
+    } else {
+      return { status: 'expired', daysRemaining: 0, canPublish: false };
+    }
+  }
+  
+  // Legacy: check old isPremium flag
+  if (user.isPremium === true) {
+    return { status: 'active', daysRemaining: null, canPublish: true };
+  }
+  
+  return { status: 'expired', daysRemaining: 0, canPublish: false };
+};
+
 /**
  * Firebase Auth Middleware
  * Verifies Firebase ID tokens and attaches user info to request
@@ -39,18 +70,21 @@ const auth = async (req, res, next) => {
     // Users must be created via /auth/register endpoint
     // This ensures role is only set during registration
     
+    // Calculate premium status from database
+    const premiumStatus = calculatePremiumStatus(user);
+    
     // Attach user info to request
     req.userId = decodedToken.uid;
     req.user = user ? {
       uid: decodedToken.uid,
       email: decodedToken.email,
-      isPremium: user.isPremium || false,
       ...user,
+      premiumStatus, // { status, daysRemaining, canPublish }
     } : {
       uid: decodedToken.uid,
       email: decodedToken.email,
       name: decodedToken.name || decodedToken.email?.split('@')[0] || 'Usuario',
-      isPremium: false,
+      premiumStatus: { status: 'none', daysRemaining: 0, canPublish: false },
     };
     
     next();
@@ -94,12 +128,14 @@ const optionalAuth = async (req, res, next) => {
         });
       }
       
+      const premiumStatus = calculatePremiumStatus(user);
+      
       req.userId = decodedToken.uid;
       req.user = {
         uid: decodedToken.uid,
         email: decodedToken.email,
-        isPremium: user.isPremium || false,
         ...user,
+        premiumStatus,
       };
     }
     next();
@@ -111,7 +147,9 @@ const optionalAuth = async (req, res, next) => {
 
 /**
  * Premium authorization middleware
- * Use after auth middleware to check if user is premium
+ * Use after auth middleware to check if user can publish events
+ * Allows: trial (with days remaining) or active (paid)
+ * Blocks: expired or none
  */
 const requirePremium = (req, res, next) => {
   if (!req.user) {
@@ -121,12 +159,21 @@ const requirePremium = (req, res, next) => {
     });
   }
   
-  // SECURITY: isPremium is read from database, never from frontend
-  if (!req.user.isPremium) {
+  // SECURITY: Premium status is calculated from database, never from frontend
+  const { status, daysRemaining, canPublish } = req.user.premiumStatus || {};
+  
+  if (!canPublish) {
+    let errorMessage = 'Premium subscription required to publish events';
+    
+    if (status === 'expired') {
+      errorMessage = 'Your trial has expired. Please upgrade to Premium to continue publishing events.';
+    }
+    
     return res.status(403).json({
       success: false,
-      error: 'Premium subscription required to publish events',
+      error: errorMessage,
       code: 'PREMIUM_REQUIRED',
+      premiumStatus: { status, daysRemaining },
     });
   }
   

@@ -17,6 +17,9 @@ const API_BASE_URL = __DEV__
   ? 'http://localhost:3001/api'
   : 'https://backend-estudio123455-hues-projects.vercel.app/api';
 
+// Default premium status for fallback
+const defaultPremiumStatus = { status: 'none' as const, daysRemaining: 0, canPublish: false };
+
 // Sync user with backend
 const syncUserWithBackend = async (firebaseUser: FirebaseUser): Promise<User | null> => {
   try {
@@ -41,7 +44,7 @@ const syncUserWithBackend = async (firebaseUser: FirebaseUser): Promise<User | n
       id: firebaseUser.uid,
       name: firebaseUser.displayName || 'Usuario',
       email: firebaseUser.email || '',
-      isPremium: false,
+      premiumStatus: defaultPremiumStatus,
     };
   } catch (error) {
     console.error('Error syncing with backend:', error);
@@ -49,12 +52,12 @@ const syncUserWithBackend = async (firebaseUser: FirebaseUser): Promise<User | n
       id: firebaseUser.uid,
       name: firebaseUser.displayName || 'Usuario',
       email: firebaseUser.email || '',
-      isPremium: false,
+      premiumStatus: defaultPremiumStatus,
     };
   }
 };
 
-// Register user with backend
+// Register user with backend (new users get 10-day trial)
 const registerUserWithBackend = async (firebaseUser: FirebaseUser): Promise<User | null> => {
   try {
     const idToken = await firebaseUser.getIdToken();
@@ -78,7 +81,7 @@ const registerUserWithBackend = async (firebaseUser: FirebaseUser): Promise<User
       id: firebaseUser.uid,
       name: firebaseUser.displayName || 'Usuario',
       email: firebaseUser.email || '',
-      isPremium: false,
+      premiumStatus: { status: 'trial', daysRemaining: 10, canPublish: true },
     };
   } catch (error) {
     console.error('Error registering with backend:', error);
@@ -86,7 +89,7 @@ const registerUserWithBackend = async (firebaseUser: FirebaseUser): Promise<User
       id: firebaseUser.uid,
       name: firebaseUser.displayName || 'Usuario',
       email: firebaseUser.email || '',
-      isPremium: false,
+      premiumStatus: defaultPremiumStatus,
     };
   }
 };

@@ -12,21 +12,64 @@ let inMemoryStorage = {
 
 // ============ USER SERVICES ============
 
+// Trial duration in days
+const TRIAL_DURATION_DAYS = 10;
+
+// Calculate premium status based on dates (backend is source of truth)
+const calculatePremiumStatus = (user) => {
+  if (!user) return { status: 'none', daysRemaining: 0 };
+  
+  // If user has active premium (paid)
+  if (user.premium?.status === 'active') {
+    return { status: 'active', daysRemaining: null };
+  }
+  
+  // If user is on trial
+  if (user.premium?.status === 'trial' && user.premium?.trialEndsAt) {
+    const now = new Date();
+    const trialEnd = new Date(user.premium.trialEndsAt);
+    const diffMs = trialEnd - now;
+    const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (daysRemaining > 0) {
+      return { status: 'trial', daysRemaining };
+    } else {
+      return { status: 'expired', daysRemaining: 0 };
+    }
+  }
+  
+  // Legacy: check old isPremium flag
+  if (user.isPremium === true) {
+    return { status: 'active', daysRemaining: null };
+  }
+  
+  return { status: 'expired', daysRemaining: 0 };
+};
+
 const userService = {
   // Create user from Firebase Auth (called during registration)
+  // New users get 10-day free trial
   async createFromFirebase(firebaseUser) {
     const db = getDb();
     const { uid, email, name } = firebaseUser;
+    
+    const now = new Date();
+    const trialEndsAt = new Date(now.getTime() + TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000);
     
     const user = {
       id: uid,
       name: name || email?.split('@')[0] || 'Usuario',
       email: email?.toLowerCase() || '',
-      isPremium: false, // All users start as free
+      premium: {
+        status: 'trial', // trial | active | expired
+        trialStartedAt: now.toISOString(),
+        trialEndsAt: trialEndsAt.toISOString(),
+        activatedAt: null,
+      },
       avatar: null,
       active: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
     };
 
     try {
@@ -57,16 +100,20 @@ const userService = {
   },
   
   // Activate premium for a user (called after payment verification)
+  // Changes status from trial/expired to active
   async activatePremium(userId) {
     const db = getDb();
+    const now = new Date().toISOString();
+    
+    const premiumUpdate = {
+      'premium.status': 'active',
+      'premium.activatedAt': now,
+      updatedAt: now,
+    };
     
     try {
       if (db) {
-        await db.collection(COLLECTIONS.USERS).doc(userId).update({
-          isPremium: true,
-          premiumActivatedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
+        await db.collection(COLLECTIONS.USERS).doc(userId).update(premiumUpdate);
         const doc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
         return firestoreHelpers.docToObject(doc);
       }
@@ -76,11 +123,26 @@ const userService = {
     
     const index = inMemoryStorage.users.findIndex(u => u.id === userId);
     if (index !== -1) {
-      inMemoryStorage.users[index].isPremium = true;
-      inMemoryStorage.users[index].premiumActivatedAt = new Date().toISOString();
+      inMemoryStorage.users[index].premium = {
+        ...inMemoryStorage.users[index].premium,
+        status: 'active',
+        activatedAt: now,
+      };
+      inMemoryStorage.users[index].updatedAt = now;
       return inMemoryStorage.users[index];
     }
     return null;
+  },
+  
+  // Get premium status for a user (calculates current status based on dates)
+  getPremiumStatus(user) {
+    return calculatePremiumStatus(user);
+  },
+  
+  // Check if user can publish events (trial or active)
+  canPublishEvents(user) {
+    const { status } = calculatePremiumStatus(user);
+    return status === 'trial' || status === 'active';
   },
 
   async create(userData) {

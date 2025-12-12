@@ -4,14 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -27,6 +27,10 @@ export default function PremiumScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
+
+  // Get premium status from backend
+  const premiumStatus = user?.premiumStatus || { status: 'none', daysRemaining: 0, canPublish: false };
+  const { status, daysRemaining, canPublish } = premiumStatus;
 
   const benefits = useMemo(
     () => [
@@ -164,15 +168,22 @@ export default function PremiumScreen() {
             Publica tus eventos en el marketplace
           </Text>
 
-          {user?.isPremium ? (
+          {status === 'active' ? (
             <View style={styles.premiumActive}>
               <Ionicons name="checkmark-circle" size={18} color="#10b981" />
-              <Text style={styles.premiumActiveText}>Tu cuenta ya es Premium</Text>
+              <Text style={styles.premiumActiveText}>Premium Activo</Text>
+            </View>
+          ) : status === 'trial' ? (
+            <View style={styles.trialActive}>
+              <Ionicons name="time-outline" size={18} color="#6366f1" />
+              <Text style={styles.trialActiveText}>
+                Trial: {daysRemaining} {daysRemaining === 1 ? 'día' : 'días'} restantes
+              </Text>
             </View>
           ) : (
             <View style={styles.premiumInactive}>
-              <Ionicons name="lock-closed" size={18} color="#f59e0b" />
-              <Text style={styles.premiumInactiveText}>Tu cuenta es Free</Text>
+              <Ionicons name="lock-closed" size={18} color="#ef4444" />
+              <Text style={styles.premiumInactiveText}>Trial expirado</Text>
             </View>
           )}
         </View>
@@ -192,7 +203,7 @@ export default function PremiumScreen() {
           ))}
         </View>
 
-        {!user?.isPremium && (
+        {status !== 'active' && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Activar Premium</Text>
             <Text style={styles.cardDesc}>
@@ -246,7 +257,7 @@ export default function PremiumScreen() {
           </View>
         )}
 
-        {user?.isPremium && step === 'done' && (
+        {status === 'active' && step === 'done' && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Listo</Text>
             <Text style={styles.cardDesc}>Ahora ya puedes publicar eventos desde el marketplace.</Text>
@@ -313,7 +324,20 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(245, 158, 11, 0.25)',
     alignItems: 'center',
   },
-  premiumInactiveText: { color: '#fde68a', fontWeight: '600' },
+  premiumInactiveText: { color: '#fca5a5', fontWeight: '600' },
+  trialActive: {
+    marginTop: 12,
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(99, 102, 241, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(99, 102, 241, 0.25)',
+    alignItems: 'center',
+  },
+  trialActiveText: { color: '#a5b4fc', fontWeight: '600' },
   card: {
     backgroundColor: '#111c33',
     borderRadius: 16,
