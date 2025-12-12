@@ -3,14 +3,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -25,70 +25,114 @@ const QUICK_QUESTIONS = [
   '¿Cómo compro tickets?',
   '¿Cómo funciona el QR?',
   '¿Qué es Premium?',
-  '¿Cómo publico un evento?',
+  'Mi QR no funciona',
+  '¿Cómo pido reembolso?',
 ];
 
 // Knowledge base for the assistant
-const getAssistantResponse = (question: string, isPremium: boolean): string => {
+const getAssistantResponse = (question: string, premiumStatus: string, daysRemaining: number | null): string => {
   const q = question.toLowerCase().trim();
+  const canPublish = premiumStatus === 'trial' || premiumStatus === 'active';
 
   // Compra de tickets
-  if (q.includes('comprar') || q.includes('compra') || q.includes('ticket') && (q.includes('cómo') || q.includes('como'))) {
-    return `🎫 **Comprar tickets es muy fácil:**
+  if (q.includes('comprar') || q.includes('compra') || (q.includes('ticket') && (q.includes('cómo') || q.includes('como'))) || q.includes('entrada')) {
+    return `🎫 **Comprar entradas es muy fácil:**
 
 1. Explora los eventos en la página principal
 2. Selecciona el evento que te interesa
-3. Elige la cantidad de entradas
+3. Elige la cantidad de entradas (máximo 10)
 4. Pulsa "Comprar con PayPal"
 5. Completa el pago en PayPal
-6. ¡Listo! Tu ticket QR aparecerá en "Mis Tickets"
+6. ¡Listo! Tu código QR aparecerá en "Mis Tickets"
 
-El pago es 100% seguro a través de PayPal.`;
+El pago es 100% seguro a través de PayPal. Puedes pagar con tu cuenta PayPal o con tarjeta de crédito/débito.`;
   }
 
-  // QR / Escaneo
-  if (q.includes('qr') || q.includes('escaneo') || q.includes('escanear') || q.includes('entrada') || q.includes('validar')) {
-    return `📱 **Sobre los tickets QR:**
+  // QR / Escaneo / Validación
+  if (q.includes('qr') || q.includes('escaneo') || q.includes('escanear') || q.includes('validar') || q.includes('código')) {
+    return `📱 **Sobre los códigos QR:**
 
-• Cada ticket genera un código QR único
-• El QR se valida **una sola vez** en el ingreso
-• Muestra tu QR desde "Mis Tickets" en la app
-• El organizador lo escanea para validar tu entrada
-• Una vez escaneado, el ticket queda marcado como usado
+• Cada compra genera un **código QR único**
+• El QR se usa **una sola vez** para ingresar al evento
+• Una vez escaneado, queda marcado como "usado"
+• Si el QR ya fue usado, **no vuelve a ser válido**
 
-⚠️ No compartas tu QR con nadie para evitar problemas.`;
+**Para mostrar tu QR:**
+1. Ve a "Mis Tickets" en la app
+2. Selecciona el ticket del evento
+3. Muestra el QR al organizador en la entrada
+
+⚠️ **Importante:** No compartas tu QR con nadie. Si alguien más lo usa antes que tú, no podrás entrar.`;
   }
 
-  // Premium
-  if (q.includes('premium') || q.includes('plan') || q.includes('suscripción') || q.includes('suscripcion')) {
-    if (isPremium) {
-      return `💎 **¡Ya eres Premium!**
+  // QR no funciona / Ticket no válido
+  if (q.includes('no funciona') || q.includes('no válido') || q.includes('invalido') || q.includes('no valido') || q.includes('usado') || q.includes('rechazado')) {
+    return `⚠️ **¿Tu QR no funciona?**
 
-Tienes acceso a:
+**Posibles causas:**
+• **Ya fue escaneado:** El QR solo se puede usar una vez. Si alguien más lo usó, ya no es válido.
+• **Brillo bajo:** Sube el brillo de tu pantalla al máximo.
+• **Pantalla sucia:** Limpia la pantalla para que el escáner lo lea bien.
+• **Evento incorrecto:** Verifica que el ticket sea para este evento y fecha.
+
+**Si crees que es un error:**
+El organizador del evento puede verificar el estado de tu ticket. Contacta directamente con él.
+
+Si necesitas más ayuda, describe exactamente qué mensaje aparece.`;
+  }
+
+  // Premium - con info del trial
+  if (q.includes('premium') || q.includes('plan') || q.includes('suscripción') || q.includes('suscripcion') || q.includes('trial') || q.includes('prueba')) {
+    if (premiumStatus === 'active') {
+      return `💎 **¡Eres Premium!**
+
+Tu cuenta tiene acceso permanente a:
 • Publicar eventos ilimitados
 • Vender tickets online
-• Validar entradas con QR
+• Validar entradas con escáner QR
 • Ver estadísticas de ventas
 
 Ve a tu Perfil → "Mi Premium" para más detalles.`;
     }
-    return `💎 **Plan Premium de EventQR:**
+    if (premiumStatus === 'trial') {
+      return `💎 **Estás en período de prueba**
 
-El plan Premium te permite:
-• **Publicar eventos** en el marketplace
-• **Vender tickets** y recibir pagos
-• **Validar entradas** con escáner QR
-• **Ver estadísticas** en tiempo real
+Te quedan **${daysRemaining} ${daysRemaining === 1 ? 'día' : 'días'}** de trial gratuito.
 
-**Precio:** Pago único de $12.99 USD (acceso de por vida)
+Durante el trial puedes:
+• Publicar eventos
+• Vender tickets
+• Validar entradas con QR
 
-Para activarlo: Perfil → "Hazte Premium" → Pagar con PayPal`;
+**Cuando termine el trial:**
+Para seguir publicando eventos, activa Premium por $12.99 USD (pago único, acceso de por vida).
+
+Perfil → "Premium Trial" → Pagar con PayPal`;
+    }
+    return `💎 **Plan Premium de EventQR**
+
+**¡Prueba gratis 10 días!**
+Al registrarte, tienes 10 días para probar todas las funciones Premium.
+
+**Beneficios Premium:**
+• Publicar eventos en el marketplace
+• Vender tickets y recibir pagos
+• Validar entradas con escáner QR
+• Ver estadísticas en tiempo real
+
+**Precio:** $12.99 USD (pago único, acceso de por vida)
+
+**¿Cómo activarlo?**
+Perfil → "Hazte Premium" → Pagar con PayPal`;
   }
 
   // Publicar evento
-  if (q.includes('publicar') || q.includes('crear evento') || q.includes('mi evento') || q.includes('organizar')) {
-    if (isPremium) {
-      return `🎉 **Como usuario Premium puedes publicar eventos:**
+  if (q.includes('publicar') || q.includes('crear evento') || q.includes('mi evento') || q.includes('organizar') || q.includes('vender')) {
+    if (canPublish) {
+      const trialNote = premiumStatus === 'trial' 
+        ? `\n\n⏰ Recuerda: Te quedan ${daysRemaining} días de trial. Activa Premium para seguir publicando después.`
+        : '';
+      return `🎉 **Puedes publicar eventos:**
 
 1. Ve a la página principal
 2. Pulsa el botón "Publicar evento"
@@ -96,95 +140,139 @@ Para activarlo: Perfil → "Hazte Premium" → Pagar con PayPal`;
 4. Sube una imagen atractiva
 5. Publica y empieza a vender tickets
 
-Tus eventos aparecerán en el marketplace para todos los usuarios.`;
+Tus eventos aparecerán en el marketplace para todos los usuarios.${trialNote}`;
     }
-    return `📢 **Para publicar eventos necesitas ser Premium**
+    return `📢 **Para publicar eventos necesitas Premium**
 
-El plan Premium te permite:
-• Publicar eventos ilimitados
-• Vender tickets online
-• Validar entradas con QR
+Tu trial ha expirado. Para volver a publicar eventos:
 
-**¿Cómo activarlo?**
 1. Ve a tu Perfil
 2. Pulsa "Hazte Premium"
 3. Paga $12.99 USD con PayPal
-4. ¡Listo! Ya puedes publicar eventos`;
+4. ¡Listo! Acceso de por vida
+
+El Premium incluye: publicar eventos, vender tickets, validar QR y estadísticas.`;
   }
 
   // PayPal / Pagos
-  if (q.includes('paypal') || q.includes('pago') || q.includes('pagar') || q.includes('tarjeta')) {
+  if (q.includes('paypal') || q.includes('pago') || q.includes('pagar') || q.includes('tarjeta') || q.includes('cobrar')) {
     return `💳 **Pagos en EventQR:**
 
-• Todos los pagos se procesan con **PayPal**
-• Puedes pagar con tu cuenta PayPal o tarjeta
+**Para comprar tickets:**
+• Todos los pagos se procesan con PayPal
+• Puedes pagar con cuenta PayPal o tarjeta
 • El pago es seguro y encriptado
 • Recibes confirmación inmediata
 
-Si tienes problemas con un pago:
+**Si tienes problemas:**
 1. Verifica tu conexión a internet
 2. Asegúrate de tener fondos disponibles
 3. Intenta con otro método de pago en PayPal
+4. Si el pago fue rechazado, contacta a soporte de PayPal
 
-¿Pago rechazado? Contacta a soporte de PayPal.`;
+**Para organizadores:**
+Los pagos de tickets se procesan a través de PayPal. Configura tu cuenta en el panel de organizador.`;
   }
 
   // Reembolso
-  if (q.includes('reembolso') || q.includes('devolucion') || q.includes('devolución') || q.includes('cancelar compra')) {
+  if (q.includes('reembolso') || q.includes('devolucion') || q.includes('devolución') || q.includes('cancelar') || q.includes('devolver')) {
     return `💰 **Política de reembolsos:**
 
-• Los reembolsos dependen del organizador del evento
-• Contacta directamente al organizador para solicitar devolución
-• Si el evento se cancela, el organizador debe procesar el reembolso
+**Importante:** Los reembolsos dependen del organizador del evento, no de EventQR.
 
-Para disputas de pago, puedes abrir un caso en PayPal.`;
+**¿Cómo solicitar reembolso?**
+1. Contacta directamente al organizador del evento
+2. Explica el motivo de tu solicitud
+3. El organizador decide si procede el reembolso
+
+**Si el evento se cancela:**
+El organizador debe procesar el reembolso a todos los compradores.
+
+**Para disputas de pago:**
+Puedes abrir un caso en PayPal si no recibes respuesta del organizador.
+
+Si necesitas contactar al organizador y no sabes cómo, indícame el nombre del evento.`;
   }
 
-  // Problemas / Ayuda
-  if (q.includes('problema') || q.includes('error') || q.includes('no funciona') || q.includes('ayuda')) {
+  // Problemas de acceso / Login
+  if (q.includes('acceso') || q.includes('login') || q.includes('iniciar sesión') || q.includes('contraseña') || q.includes('cuenta')) {
+    return `🔐 **Problemas de acceso:**
+
+**¿Olvidaste tu contraseña?**
+En la pantalla de login, pulsa "¿Olvidaste tu contraseña?" y sigue las instrucciones.
+
+**¿No puedes iniciar sesión?**
+• Verifica que el email sea correcto
+• Revisa tu conexión a internet
+• Intenta cerrar y abrir la app
+
+**¿No tienes cuenta?**
+Regístrate gratis y obtén 10 días de trial Premium.
+
+Si el problema persiste, describe qué error aparece.`;
+  }
+
+  // Problemas generales
+  if (q.includes('problema') || q.includes('error') || q.includes('ayuda') || q.includes('falla')) {
     return `🔧 **¿Tienes un problema?**
 
 **Problemas comunes:**
 • **No carga la app:** Verifica tu conexión a internet
 • **Pago fallido:** Intenta de nuevo o usa otro método en PayPal
-• **QR no funciona:** Asegúrate de que el brillo esté al máximo
+• **QR no funciona:** Sube el brillo al máximo y limpia la pantalla
 • **No veo mi ticket:** Revisa en "Mis Tickets" después del pago
+• **No puedo publicar:** Verifica que tu trial no haya expirado
 
-Si el problema persiste, describe qué ocurre y te ayudo.`;
+**¿Necesitas ayuda humana?**
+Si el problema persiste y no puedo resolverlo, te recomiendo contactar al soporte técnico describiendo el error exacto que aparece.
+
+Describe qué ocurre y te ayudo.`;
   }
 
   // Saludo
-  if (q.includes('hola') || q.includes('buenas') || q.includes('hey') || q === 'hi') {
-    return `👋 ¡Hola! Soy el asistente de EventQR.
+  if (q.includes('hola') || q.includes('buenas') || q.includes('hey') || q === 'hi' || q.includes('buenos')) {
+    return `👋 ¡Hola! Soy el asistente de Ayuda y Soporte de EventQR.
 
 Puedo ayudarte con:
-• Compra de tickets
-• Tickets QR y escaneo
-• Plan Premium
-• Publicación de eventos
-• Problemas con pagos
+• Compra de entradas
+• Uso del código QR
+• Tickets no válidos
+• Plan Premium y trial
+• Pagos con PayPal
+• Reembolsos
+• Problemas de acceso
 
 ¿En qué puedo ayudarte hoy?`;
   }
 
   // Gracias
-  if (q.includes('gracias') || q.includes('thanks')) {
-    return `😊 ¡De nada! Estoy aquí para ayudarte.
+  if (q.includes('gracias') || q.includes('thanks') || q.includes('genial') || q.includes('perfecto')) {
+    return `😊 ¡De nada! Me alegra poder ayudarte.
 
 ¿Hay algo más en lo que pueda asistirte?`;
+  }
+
+  // Despedida
+  if (q.includes('adios') || q.includes('adiós') || q.includes('chao') || q.includes('bye')) {
+    return `👋 ¡Hasta luego! Que disfrutes tus eventos.
+
+Si necesitas ayuda en el futuro, aquí estaré.`;
   }
 
   // Default
   return `🤔 No estoy seguro de entender tu pregunta.
 
 Puedo ayudarte con:
-• **Compra de tickets** - Cómo comprar entradas
-• **Tickets QR** - Cómo funcionan y se validan
-• **Plan Premium** - Beneficios y cómo activarlo
+• **Compra de entradas** - Cómo comprar tickets
+• **Código QR** - Cómo funciona y qué hacer si no es válido
+• **Plan Premium** - Trial de 10 días y beneficios
 • **Publicar eventos** - Requisitos y pasos
 • **Pagos** - PayPal y problemas comunes
+• **Reembolsos** - Política y cómo solicitarlos
 
-Intenta reformular tu pregunta o elige uno de estos temas.`;
+Intenta reformular tu pregunta o elige uno de estos temas.
+
+Si tu duda requiere atención personalizada, te recomiendo contactar al soporte técnico.`;
 };
 
 export default function AssistantScreen() {
@@ -200,6 +288,10 @@ export default function AssistantScreen() {
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef<FlatList>(null);
 
+  // Get premium status from user
+  const premiumStatus = user?.premiumStatus?.status || 'none';
+  const daysRemaining = user?.premiumStatus?.daysRemaining ?? 0;
+
   const sendMessage = (text: string) => {
     if (!text.trim()) return;
 
@@ -210,7 +302,7 @@ export default function AssistantScreen() {
       timestamp: new Date(),
     };
 
-    const response = getAssistantResponse(text, user?.isPremium || false);
+    const response = getAssistantResponse(text, premiumStatus, daysRemaining);
     const assistantMessage: Message = {
       id: (Date.now() + 1).toString(),
       text: response,
