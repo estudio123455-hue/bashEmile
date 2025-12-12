@@ -1,9 +1,16 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const { optionalAuth, auth, requirePremium } = require('../middleware/auth');
+const { optionalAuth, auth } = require('../middleware/auth');
 const { eventService } = require('../services/firebaseService');
 
 const router = express.Router();
+
+/**
+ * NEW BUSINESS MODEL: Commission-based monetization
+ * - Publishing events is FREE for all authenticated users
+ * - Platform earns commission on each ticket sold (8-10%)
+ * - No Premium subscriptions, no trial periods
+ */
 
 // Validation rules for creating an event
 const createEventValidation = [
@@ -72,9 +79,10 @@ router.get('/:id', optionalAuth, async (req, res) => {
 
 /**
  * POST /api/events
- * Create a new event (PREMIUM USERS ONLY)
+ * Create a new event - FREE for all authenticated users
+ * Platform monetizes via commission on ticket sales (8-10%)
  */
-router.post('/', auth, requirePremium, createEventValidation, async (req, res) => {
+router.post('/', auth, createEventValidation, async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -86,9 +94,9 @@ router.post('/', auth, requirePremium, createEventValidation, async (req, res) =
 
     const { title, description, date, time, location, category, ticketPrice, capacity, imageUrl } = req.body;
 
-    // Create event with publisher ID from token (NEVER trust client-sent publisherId)
+    // Create event with owner ID from token (NEVER trust client-sent ownerId)
     const eventData = {
-      publisherId: req.userId, // Always from verified token
+      ownerId: req.userId, // Always from verified token
       title,
       description,
       date,
@@ -112,7 +120,7 @@ router.post('/', auth, requirePremium, createEventValidation, async (req, res) =
     res.status(201).json({
       success: true,
       data: event,
-      message: 'Event published successfully',
+      message: 'Event published successfully. You only pay commission when tickets sell!',
     });
   } catch (error) {
     console.error('Error creating event:', error);

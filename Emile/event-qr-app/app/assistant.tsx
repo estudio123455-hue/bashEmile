@@ -24,15 +24,14 @@ interface Message {
 const QUICK_QUESTIONS = [
   '¿Cómo compro tickets?',
   '¿Cómo funciona el QR?',
-  '¿Qué es Premium?',
+  '¿Cómo publico un evento?',
   'Mi QR no funciona',
   '¿Cómo pido reembolso?',
 ];
 
-// Knowledge base for the assistant
-const getAssistantResponse = (question: string, premiumStatus: string, daysRemaining: number | null): string => {
+// Knowledge base for the assistant - Commission-based model
+const getAssistantResponse = (question: string): string => {
   const q = question.toLowerCase().trim();
-  const canPublish = premiumStatus === 'trial' || premiumStatus === 'active';
 
   // Compra de tickets
   if (q.includes('comprar') || q.includes('compra') || (q.includes('ticket') && (q.includes('cómo') || q.includes('como'))) || q.includes('entrada')) {
@@ -81,77 +80,45 @@ El organizador del evento puede verificar el estado de tu ticket. Contacta direc
 Si necesitas más ayuda, describe exactamente qué mensaje aparece.`;
   }
 
-  // Premium - con info del trial
-  if (q.includes('premium') || q.includes('plan') || q.includes('suscripción') || q.includes('suscripcion') || q.includes('trial') || q.includes('prueba')) {
-    if (premiumStatus === 'active') {
-      return `💎 **¡Eres Premium!**
+  // Publicar evento - GRATIS para todos
+  if (q.includes('publicar') || q.includes('crear evento') || q.includes('mi evento') || q.includes('organizar') || q.includes('vender') || q.includes('gratis')) {
+    return `🎉 **¡Publicar eventos es GRATIS!**
 
-Tu cuenta tiene acceso permanente a:
-• Publicar eventos ilimitados
-• Vender tickets online
-• Validar entradas con escáner QR
-• Ver estadísticas de ventas
+En EventQR puedes publicar tus eventos sin costo alguno.
 
-Ve a tu Perfil → "Mi Premium" para más detalles.`;
-    }
-    if (premiumStatus === 'trial') {
-      return `💎 **Estás en período de prueba**
-
-Te quedan **${daysRemaining} ${daysRemaining === 1 ? 'día' : 'días'}** de trial gratuito.
-
-Durante el trial puedes:
-• Publicar eventos
-• Vender tickets
-• Validar entradas con QR
-
-**Cuando termine el trial:**
-Para seguir publicando eventos, activa Premium por $12.99 USD (pago único, acceso de por vida).
-
-Perfil → "Premium Trial" → Pagar con PayPal`;
-    }
-    return `💎 **Plan Premium de EventQR**
-
-**¡Prueba gratis 10 días!**
-Al registrarte, tienes 10 días para probar todas las funciones Premium.
-
-**Beneficios Premium:**
-• Publicar eventos en el marketplace
-• Vender tickets y recibir pagos
-• Validar entradas con escáner QR
-• Ver estadísticas en tiempo real
-
-**Precio:** $12.99 USD (pago único, acceso de por vida)
-
-**¿Cómo activarlo?**
-Perfil → "Hazte Premium" → Pagar con PayPal`;
-  }
-
-  // Publicar evento
-  if (q.includes('publicar') || q.includes('crear evento') || q.includes('mi evento') || q.includes('organizar') || q.includes('vender')) {
-    if (canPublish) {
-      const trialNote = premiumStatus === 'trial' 
-        ? `\n\n⏰ Recuerda: Te quedan ${daysRemaining} días de trial. Activa Premium para seguir publicando después.`
-        : '';
-      return `🎉 **Puedes publicar eventos:**
-
+**¿Cómo funciona?**
 1. Ve a la página principal
-2. Pulsa el botón "Publicar evento"
+2. Pulsa "Publicar evento gratis"
 3. Completa los datos: título, fecha, lugar, precio
 4. Sube una imagen atractiva
-5. Publica y empieza a vender tickets
+5. ¡Publica y empieza a vender!
 
-Tus eventos aparecerán en el marketplace para todos los usuarios.${trialNote}`;
-    }
-    return `📢 **Para publicar eventos necesitas Premium**
+**Modelo de comisión:**
+Solo cobramos una pequeña comisión (8-10%) por cada boleta vendida.
+Sin costos fijos. Sin riesgos.
 
-Tu trial ha expirado. Para volver a publicar eventos:
+Tus eventos aparecerán en el marketplace para todos los usuarios.`;
+  }
 
-1. Ve a tu Perfil
-2. Pulsa "Hazte Premium"
-3. Paga $12.99 USD con PayPal
-4. ¡Listo! Acceso de por vida
+  // Comisión
+  if (q.includes('comisión') || q.includes('comision') || q.includes('costo') || q.includes('cobran') || q.includes('precio')) {
+    return `💰 **Modelo de comisión EventQR:**
 
-El Premium incluye: publicar eventos, vender tickets, validar QR y estadísticas.`;
+**Publicar eventos:** GRATIS
+**Comisión por boleta vendida:** 8-10%
+
+**Ejemplo:**
+Si vendes una boleta de $50.000 COP:
+• Precio boleta: $50.000
+• Comisión EventQR (~8%): $4.000
+• Tú recibes: $46.000
+
+**Ventajas:**
+• Sin costos fijos
+• Sin riesgos - solo pagas si vendes
+• Transparente - el comprador ve el desglose
+
+¡Empieza a vender sin inversión inicial!`;
   }
 
   // PayPal / Pagos
@@ -221,7 +188,7 @@ Si el problema persiste, describe qué error aparece.`;
 • **Pago fallido:** Intenta de nuevo o usa otro método en PayPal
 • **QR no funciona:** Sube el brillo al máximo y limpia la pantalla
 • **No veo mi ticket:** Revisa en "Mis Tickets" después del pago
-• **No puedo publicar:** Verifica que tu trial no haya expirado
+• **No puedo publicar:** Verifica tu conexión e intenta de nuevo
 
 **¿Necesitas ayuda humana?**
 Si el problema persiste y no puedo resolverlo, te recomiendo contactar al soporte técnico describiendo el error exacto que aparece.
@@ -235,12 +202,12 @@ Describe qué ocurre y te ayudo.`;
 
 Puedo ayudarte con:
 • Compra de entradas
+• Publicar eventos (¡GRATIS!)
 • Uso del código QR
 • Tickets no válidos
-• Plan Premium y trial
 • Pagos con PayPal
 • Reembolsos
-• Problemas de acceso
+• Comisiones
 
 ¿En qué puedo ayudarte hoy?`;
   }
@@ -265,8 +232,8 @@ Si necesitas ayuda en el futuro, aquí estaré.`;
 Puedo ayudarte con:
 • **Compra de entradas** - Cómo comprar tickets
 • **Código QR** - Cómo funciona y qué hacer si no es válido
-• **Plan Premium** - Trial de 10 días y beneficios
-• **Publicar eventos** - Requisitos y pasos
+• **Publicar eventos** - ¡GRATIS! Solo comisión por venta
+• **Comisiones** - Modelo de monetización
 • **Pagos** - PayPal y problemas comunes
 • **Reembolsos** - Política y cómo solicitarlos
 
@@ -288,10 +255,6 @@ export default function AssistantScreen() {
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef<FlatList>(null);
 
-  // Get premium status from user
-  const premiumStatus = user?.premiumStatus?.status || 'none';
-  const daysRemaining = user?.premiumStatus?.daysRemaining ?? 0;
-
   const sendMessage = (text: string) => {
     if (!text.trim()) return;
 
@@ -302,7 +265,7 @@ export default function AssistantScreen() {
       timestamp: new Date(),
     };
 
-    const response = getAssistantResponse(text, premiumStatus, daysRemaining);
+    const response = getAssistantResponse(text);
     const assistantMessage: Message = {
       id: (Date.now() + 1).toString(),
       text: response,

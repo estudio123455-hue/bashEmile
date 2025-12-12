@@ -4,19 +4,24 @@ const { userService } = require('../services/firebaseService');
 
 const router = express.Router();
 
-// Helper to format user response with premium status
-const formatUserResponse = (user, premiumStatus) => ({
+/**
+ * NEW BUSINESS MODEL: Commission-based monetization
+ * - No Premium subscriptions
+ * - All users can publish events for FREE
+ * - Platform earns commission on ticket sales (8-10%)
+ */
+
+// Helper to format user response (simplified - no premium)
+const formatUserResponse = (user) => ({
   id: user.id || user.uid,
   name: user.name,
   email: user.email,
   avatar: user.avatar,
-  premium: user.premium || null,
-  premiumStatus: premiumStatus || { status: 'none', daysRemaining: 0, canPublish: false },
 });
 
 /**
  * POST /api/auth/register
- * Register a new user (all users start with 10-day free trial)
+ * Register a new user
  */
 router.post('/register', auth, async (req, res) => {
   try {
@@ -26,28 +31,24 @@ router.post('/register', auth, async (req, res) => {
       return res.json({
         success: true,
         data: {
-          user: formatUserResponse(existingUser, req.user.premiumStatus),
+          user: formatUserResponse(existingUser),
         },
         message: 'User already registered',
       });
     }
     
-    // New user gets 10-day free trial
     const newUser = await userService.createFromFirebase({
       uid: req.userId,
       email: req.user.email,
       name: req.user.name || req.user.email?.split('@')[0] || 'Usuario',
     });
     
-    // Calculate premium status for new user
-    const premiumStatus = userService.getPremiumStatus(newUser);
-    
     res.status(201).json({
       success: true,
       data: {
-        user: formatUserResponse(newUser, premiumStatus),
+        user: formatUserResponse(newUser),
       },
-      message: 'User registered successfully. You have a 10-day free trial!',
+      message: 'Welcome to EventQR! You can now publish events for free.',
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -61,7 +62,6 @@ router.post('/register', auth, async (req, res) => {
 /**
  * POST /api/auth/sync
  * Sync Firebase user with backend database
- * Returns current premium status calculated by backend
  */
 router.post('/sync', auth, async (req, res) => {
   try {
@@ -70,7 +70,7 @@ router.post('/sync', auth, async (req, res) => {
     res.json({
       success: true,
       data: {
-        user: formatUserResponse(user, user.premiumStatus),
+        user: formatUserResponse(user),
       },
     });
   } catch (error) {
@@ -82,12 +82,12 @@ router.post('/sync', auth, async (req, res) => {
   }
 });
 
-// GET /api/auth/me - Get current user profile with premium status
+// GET /api/auth/me - Get current user profile
 router.get('/me', auth, async (req, res) => {
   try {
     res.json({
       success: true,
-      data: formatUserResponse(req.user, req.user.premiumStatus),
+      data: formatUserResponse(req.user),
     });
   } catch (error) {
     res.status(500).json({
@@ -115,48 +115,14 @@ router.put('/profile', auth, async (req, res) => {
       });
     }
 
-    const premiumStatus = userService.getPremiumStatus(user);
-
     res.json({
       success: true,
-      data: formatUserResponse(user, premiumStatus),
+      data: formatUserResponse(user),
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       error: 'Error updating profile',
-    });
-  }
-});
-
-/**
- * POST /api/auth/activate-premium
- * Activate premium for current user (called after payment verification)
- * Changes status from trial/expired to active (permanent)
- */
-router.post('/activate-premium', auth, async (req, res) => {
-  try {
-    const updatedUser = await userService.activatePremium(req.userId);
-    
-    if (!updatedUser) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found',
-      });
-    }
-    
-    res.json({
-      success: true,
-      data: {
-        user: formatUserResponse(updatedUser, { status: 'active', daysRemaining: null, canPublish: true }),
-      },
-      message: 'Premium activated successfully',
-    });
-  } catch (error) {
-    console.error('Activate premium error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error activating premium',
     });
   }
 });

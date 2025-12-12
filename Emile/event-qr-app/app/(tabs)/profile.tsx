@@ -92,31 +92,6 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.menuSection}>
-        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/premium' as any)}>
-          <View style={styles.menuItemLeft}>
-            <View style={[styles.menuIcon, { backgroundColor: 'rgba(251, 191, 36, 0.2)' }]}>
-              <Ionicons name="diamond" size={20} color="#fbbf24" />
-            </View>
-            <Text style={styles.menuItemText}>
-              {user?.premiumStatus?.status === 'active' ? 'Mi Premium' : 
-               user?.premiumStatus?.status === 'trial' ? 'Premium Trial' : 'Hazte Premium'}
-            </Text>
-          </View>
-          {user?.premiumStatus?.status === 'active' ? (
-            <View style={styles.premiumBadge}>
-              <Text style={styles.premiumBadgeText}>Activo</Text>
-            </View>
-          ) : user?.premiumStatus?.status === 'trial' ? (
-            <View style={styles.trialBadge}>
-              <Text style={styles.trialBadgeText}>{user.premiumStatus.daysRemaining}d</Text>
-            </View>
-          ) : (
-            <View style={styles.expiredBadge}>
-              <Text style={styles.expiredBadgeText}>Expirado</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/settings/edit-profile' as any)}>
           <View style={styles.menuItemLeft}>
             <View style={[styles.menuIcon, { backgroundColor: 'rgba(99, 102, 241, 0.2)' }]}>
@@ -301,38 +276,5 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 12,
     marginTop: 20,
-  },
-  premiumBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  premiumBadgeText: {
-    color: '#10b981',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  trialBadge: {
-    backgroundColor: 'rgba(99, 102, 241, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  trialBadgeText: {
-    color: '#6366f1',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  expiredBadge: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  expiredBadgeText: {
-    color: '#ef4444',
-    fontSize: 12,
-    fontWeight: '600',
   },
 });

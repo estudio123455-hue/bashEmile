@@ -52,7 +52,6 @@ function RootLayoutNav() {
         <Stack.Screen name="settings/notifications" options={{ presentation: 'card' }} />
         <Stack.Screen name="settings/help" options={{ presentation: 'card' }} />
         <Stack.Screen name="settings/terms" options={{ presentation: 'card' }} />
-        <Stack.Screen name="premium" options={{ presentation: 'card' }} />
         <Stack.Screen name="assistant" options={{ presentation: 'card' }} />
       </Stack>
       <StatusBar style="light" />
