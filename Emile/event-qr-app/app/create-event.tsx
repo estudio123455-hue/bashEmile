@@ -1,7 +1,5 @@
 import { auth } from '@/config/firebase';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
-import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -44,18 +42,11 @@ export default function CreateEventScreen() {
   const [capacity, setCapacity] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      // For now, we'll use a placeholder since we don't have image upload
-      // In production, you'd upload to a service like Cloudinary or S3
-      setImageUrl(result.assets[0].uri);
+  const pickImage = () => {
+    // Simple URL input for web compatibility
+    const url = prompt('Ingresa la URL de la imagen del evento:');
+    if (url) {
+      setImageUrl(url);
     }
   };
 
@@ -248,17 +239,24 @@ export default function CreateEventScreen() {
           {/* Categoría */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Categoría *</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={category}
-                onValueChange={setCategory}
-                style={styles.picker}
-                dropdownIconColor="#fff"
-              >
-                {CATEGORIES.map((cat) => (
-                  <Picker.Item key={cat.value} label={cat.label} value={cat.value} />
-                ))}
-              </Picker>
+            <View style={styles.categoryContainer}>
+              {CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat.value}
+                  style={[
+                    styles.categoryOption,
+                    category === cat.value && styles.categoryOptionSelected
+                  ]}
+                  onPress={() => setCategory(cat.value)}
+                >
+                  <Text style={[
+                    styles.categoryOptionText,
+                    category === cat.value && styles.categoryOptionTextSelected
+                  ]}>
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
@@ -405,14 +403,31 @@ const styles = StyleSheet.create({
   },
   textArea: { height: 100, textAlignVertical: 'top' },
   row: { flexDirection: 'row' },
-  pickerContainer: {
+  categoryContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  categoryOption: {
     backgroundColor: '#1e293b',
-    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#334155',
-    overflow: 'hidden',
   },
-  picker: { color: '#fff', height: 50 },
+  categoryOptionSelected: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+  },
+  categoryOptionText: {
+    color: '#94a3b8',
+    fontSize: 14,
+  },
+  categoryOptionTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
   commissionBox: {
     backgroundColor: '#1e293b',
     borderRadius: 12,
