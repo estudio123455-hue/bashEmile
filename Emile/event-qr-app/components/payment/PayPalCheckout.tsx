@@ -42,31 +42,47 @@ export default function PayPalCheckout({
     setIsLoading(true);
     setStep('processing');
 
+    const API_BASE_URL = __DEV__ 
+      ? 'http://localhost:3001/api'
+      : 'https://backend-estudio123455-hues-projects.vercel.app/api';
+
     try {
-      // Simular creación de orden en backend
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 1. Crear orden en el backend
+      const createResponse = await fetch(`${API_BASE_URL}/paypal/create-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          eventId: event.id,
+          quantity: quantity,
+        }),
+      });
 
-      // En producción, aquí abrirías el WebBrowser con la URL de PayPal
-      // const result = await WebBrowser.openAuthSessionAsync(
-      //   order.approvalUrl,
-      //   'your-app://payment-callback'
-      // );
+      const createData = await createResponse.json();
 
-      // Simulamos un pago exitoso para demo
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (!createData.success || !createData.data?.approvalUrl) {
+        throw new Error(createData.error || 'Error al crear orden');
+      }
 
-      const transactionId = `TXN-${Date.now()}`;
-      setStep('success');
+      // 2. Abrir PayPal en el navegador
+      const { Linking } = await import('react-native');
+      await Linking.openURL(createData.data.approvalUrl);
+
+      // 3. Mostrar instrucciones al usuario
+      setStep('summary');
+      setIsLoading(false);
       
-      setTimeout(() => {
-        onPaymentSuccess(transactionId);
-      }, 2000);
+      // Nota: En una implementación completa, usarías deep linking
+      // para capturar cuando el usuario regresa de PayPal
+      // Por ahora, el usuario debe completar el pago en PayPal
+      // y el ticket se generará cuando PayPal notifique al webhook
 
-    } catch (error) {
-      setErrorMessage('Error al procesar el pago');
+    } catch (error: any) {
+      console.error('PayPal error:', error);
+      setErrorMessage(error.message || 'Error al procesar el pago');
       setStep('error');
-      onPaymentError('Error al procesar el pago');
-    } finally {
+      onPaymentError(error.message || 'Error al procesar el pago');
       setIsLoading(false);
     }
   };
