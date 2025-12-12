@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import React from 'react';
 import {
     Alert,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -15,22 +16,31 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function OrganizerProfileScreen() {
   const { user, logout } = useAuth();
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro que deseas cerrar sesión?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/(auth)/login');
+  const handleLogout = async () => {
+    // En web, confirm() funciona mejor que Alert.alert
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('¿Estás seguro que deseas cerrar sesión?');
+      if (confirmed) {
+        await logout();
+        router.replace('/(auth)/login');
+      }
+    } else {
+      Alert.alert(
+        'Cerrar Sesión',
+        '¿Estás seguro que deseas cerrar sesión?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Cerrar Sesión',
+            style: 'destructive',
+            onPress: async () => {
+              await logout();
+              router.replace('/(auth)/login');
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const menuItems = [
