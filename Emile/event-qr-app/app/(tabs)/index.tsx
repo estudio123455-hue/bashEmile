@@ -9,7 +9,6 @@ import {
     ActivityIndicator,
     FlatList,
     Platform,
-    Pressable,
     RefreshControl,
     StatusBar,
     StyleSheet,
@@ -188,18 +187,11 @@ export default function EventsScreen() {
           </Text>
           
           {/* CTA - Publicar evento gratis */}
-          <Link href={"/create-event" as any} asChild>
-            <Pressable style={styles.emptyPublishCta}>
-              <LinearGradient
-                colors={['#6366f1', '#8b5cf6']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.emptyPublishCtaGradient}
-              >
-                <Ionicons name="add-circle" size={22} color="#fff" />
-                <Text style={styles.emptyPublishCtaText}>Publica tu evento gratis</Text>
-              </LinearGradient>
-            </Pressable>
+          <Link href={"/create-event" as any} style={styles.emptyPublishCtaLink}>
+            <View style={styles.emptyPublishCtaBtn}>
+              <Ionicons name="add-circle" size={22} color="#fff" />
+              <Text style={styles.emptyPublishCtaText}>Publica tu evento gratis</Text>
+            </View>
           </Link>
           
           <Text style={styles.emptyCtaSubtext}>
@@ -348,15 +340,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  emptyPublishCta: {
+  emptyPublishCtaLink: {
     marginTop: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
   },
-  emptyPublishCtaGradient: {
+  emptyPublishCtaBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#6366f1',
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 12,
