@@ -33,9 +33,12 @@ export default function EventsScreen() {
       const response = await fetch(`${API_BASE_URL}/events`);
       const data = await response.json();
       
-      if (data.success && data.data) {
+      // Handle both formats: data.events (from backend) or data directly
+      const eventsArray = data.data?.events || data.data || [];
+      
+      if (data.success && Array.isArray(eventsArray)) {
         // Map backend event format to frontend Event type
-        const mappedEvents = data.data.map((event: any) => ({
+        const mappedEvents = eventsArray.map((event: any) => ({
           id: event.id,
           title: event.title,
           description: event.description,
