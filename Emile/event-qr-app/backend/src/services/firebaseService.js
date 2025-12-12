@@ -105,6 +105,36 @@ initializeMockEvents();
 // ============ USER SERVICES ============
 
 const userService = {
+  // Create user from Firebase Auth (no password needed)
+  async createFromFirebase(firebaseUser) {
+    const db = getDb();
+    const { uid, email, name } = firebaseUser;
+    
+    const user = {
+      id: uid,
+      name: name || email?.split('@')[0] || 'Usuario',
+      email: email?.toLowerCase() || '',
+      role: 'user', // Default role, can be changed by admin
+      avatar: null,
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      if (db) {
+        await db.collection(COLLECTIONS.USERS).doc(uid).set(user);
+        return user;
+      }
+    } catch (error) {
+      console.error('Firebase error in createFromFirebase:', error.message);
+    }
+    
+    // Fallback to in-memory
+    inMemoryStorage.users.push(user);
+    return user;
+  },
+
   async create(userData) {
     const db = getDb();
     const { name, email, password } = userData;
