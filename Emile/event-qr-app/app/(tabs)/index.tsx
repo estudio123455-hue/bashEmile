@@ -3,12 +3,13 @@ import { useAuth } from '@/context/AuthContext';
 import { Event } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
     Platform,
+    Pressable,
     RefreshControl,
     StatusBar,
     StyleSheet,
@@ -187,21 +188,19 @@ export default function EventsScreen() {
           </Text>
           
           {/* CTA - Publicar evento gratis */}
-          <TouchableOpacity 
-            style={styles.emptyPublishCta} 
-            onPress={() => router.push('/create-event' as any)}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#6366f1', '#8b5cf6']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.emptyPublishCtaGradient}
-            >
-              <Ionicons name="add-circle" size={22} color="#fff" />
-              <Text style={styles.emptyPublishCtaText}>Publica tu evento gratis</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          <Link href={"/create-event" as any} asChild>
+            <Pressable style={styles.emptyPublishCta}>
+              <LinearGradient
+                colors={['#6366f1', '#8b5cf6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.emptyPublishCtaGradient}
+              >
+                <Ionicons name="add-circle" size={22} color="#fff" />
+                <Text style={styles.emptyPublishCtaText}>Publica tu evento gratis</Text>
+              </LinearGradient>
+            </Pressable>
+          </Link>
           
           <Text style={styles.emptyCtaSubtext}>
             Solo pagas comisión cuando vendes
