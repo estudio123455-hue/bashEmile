@@ -183,7 +183,28 @@ export default function EventsScreen() {
           <Ionicons name="calendar-outline" size={64} color="#334155" />
           <Text style={styles.emptyTitle}>No hay eventos disponibles</Text>
           <Text style={styles.emptyText}>
-            Los organizadores aún no han publicado eventos
+            ¡Sé el primero en publicar un evento!
+          </Text>
+          
+          {/* CTA - Publicar evento gratis */}
+          <TouchableOpacity 
+            style={styles.emptyPublishCta} 
+            onPress={() => router.push('/create-event' as any)}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#6366f1', '#8b5cf6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.emptyPublishCtaGradient}
+            >
+              <Ionicons name="add-circle" size={22} color="#fff" />
+              <Text style={styles.emptyPublishCtaText}>Publica tu evento gratis</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          
+          <Text style={styles.emptyCtaSubtext}>
+            Solo pagas comisión cuando vendes
           </Text>
         </View>
       ) : (
@@ -327,6 +348,30 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'center',
     marginTop: 8,
+  },
+  emptyPublishCta: {
+    marginTop: 24,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  emptyPublishCtaGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+  },
+  emptyPublishCtaText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  emptyCtaSubtext: {
+    color: '#64748b',
+    fontSize: 13,
+    marginTop: 12,
   },
   publishCta: {
     marginTop: 16,
