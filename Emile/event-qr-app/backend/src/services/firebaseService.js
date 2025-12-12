@@ -122,58 +122,75 @@ const userService = {
       updatedAt: new Date().toISOString(),
     };
 
-    if (db) {
-      const docRef = await db.collection(COLLECTIONS.USERS).add(user);
-      return { id: docRef.id, ...user };
-    } else {
-      const id = uuidv4();
-      const newUser = { id, ...user };
-      inMemoryStorage.users.push(newUser);
-      return newUser;
+    try {
+      if (db) {
+        const docRef = await db.collection(COLLECTIONS.USERS).add(user);
+        return { id: docRef.id, ...user };
+      }
+    } catch (error) {
+      console.error('Firebase error in create user:', error.message);
     }
+    
+    // Fallback to in-memory
+    const id = uuidv4();
+    const newUser = { id, ...user };
+    inMemoryStorage.users.push(newUser);
+    return newUser;
   },
 
   async findByEmail(email) {
     const db = getDb();
     
-    if (db) {
-      const snapshot = await db.collection(COLLECTIONS.USERS)
-        .where('email', '==', email.toLowerCase())
-        .limit(1)
-        .get();
-      
-      if (snapshot.empty) return null;
-      return firestoreHelpers.docToObject(snapshot.docs[0]);
-    } else {
-      return inMemoryStorage.users.find(u => u.email === email.toLowerCase()) || null;
+    try {
+      if (db) {
+        const snapshot = await db.collection(COLLECTIONS.USERS)
+          .where('email', '==', email.toLowerCase())
+          .limit(1)
+          .get();
+        
+        if (snapshot.empty) return null;
+        return firestoreHelpers.docToObject(snapshot.docs[0]);
+      }
+    } catch (error) {
+      console.error('Firebase error in findByEmail:', error.message);
     }
+    
+    return inMemoryStorage.users.find(u => u.email === email.toLowerCase()) || null;
   },
 
   async findById(id) {
     const db = getDb();
     
-    if (db) {
-      const doc = await db.collection(COLLECTIONS.USERS).doc(id).get();
-      return firestoreHelpers.docToObject(doc);
-    } else {
-      return inMemoryStorage.users.find(u => u.id === id) || null;
+    try {
+      if (db) {
+        const doc = await db.collection(COLLECTIONS.USERS).doc(id).get();
+        return firestoreHelpers.docToObject(doc);
+      }
+    } catch (error) {
+      console.error('Firebase error in findById:', error.message);
     }
+    
+    return inMemoryStorage.users.find(u => u.id === id) || null;
   },
 
   async update(id, data) {
     const db = getDb();
     const updateData = { ...data, updatedAt: new Date().toISOString() };
     
-    if (db) {
-      await db.collection(COLLECTIONS.USERS).doc(id).update(updateData);
-      const doc = await db.collection(COLLECTIONS.USERS).doc(id).get();
-      return firestoreHelpers.docToObject(doc);
-    } else {
-      const index = inMemoryStorage.users.findIndex(u => u.id === id);
-      if (index === -1) return null;
-      inMemoryStorage.users[index] = { ...inMemoryStorage.users[index], ...updateData };
-      return inMemoryStorage.users[index];
+    try {
+      if (db) {
+        await db.collection(COLLECTIONS.USERS).doc(id).update(updateData);
+        const doc = await db.collection(COLLECTIONS.USERS).doc(id).get();
+        return firestoreHelpers.docToObject(doc);
+      }
+    } catch (error) {
+      console.error('Firebase error in update:', error.message);
     }
+    
+    const index = inMemoryStorage.users.findIndex(u => u.id === id);
+    if (index === -1) return null;
+    inMemoryStorage.users[index] = { ...inMemoryStorage.users[index], ...updateData };
+    return inMemoryStorage.users[index];
   },
 
   async comparePassword(plainPassword, hashedPassword) {
@@ -188,57 +205,66 @@ const eventService = {
     const db = getDb();
     const { category, search, limit = 20, offset = 0 } = filters;
     
-    if (db) {
-      let query = db.collection(COLLECTIONS.EVENTS);
-      
-      if (category && category !== 'all') {
-        query = query.where('category', '==', category);
+    try {
+      if (db) {
+        let query = db.collection(COLLECTIONS.EVENTS);
+        
+        if (category && category !== 'all') {
+          query = query.where('category', '==', category);
+        }
+        
+        query = query.where('availableTickets', '>', 0);
+        
+        const snapshot = await query.limit(parseInt(limit)).get();
+        let events = firestoreHelpers.queryToArray(snapshot);
+        
+        if (search) {
+          const searchLower = search.toLowerCase();
+          events = events.filter(e => 
+            e.title.toLowerCase().includes(searchLower) ||
+            e.location.toLowerCase().includes(searchLower)
+          );
+        }
+        
+        return events;
       }
-      
-      query = query.where('availableTickets', '>', 0);
-      
-      const snapshot = await query.limit(parseInt(limit)).get();
-      let events = firestoreHelpers.queryToArray(snapshot);
-      
-      if (search) {
-        const searchLower = search.toLowerCase();
-        events = events.filter(e => 
-          e.title.toLowerCase().includes(searchLower) ||
-          e.location.toLowerCase().includes(searchLower)
-        );
-      }
-      
-      return events;
-    } else {
-      let events = [...inMemoryStorage.events];
-      
-      if (category && category !== 'all') {
-        events = events.filter(e => e.category === category);
-      }
-      
-      if (search) {
-        const searchLower = search.toLowerCase();
-        events = events.filter(e => 
-          e.title.toLowerCase().includes(searchLower) ||
-          e.location.toLowerCase().includes(searchLower)
-        );
-      }
-      
-      events = events.filter(e => e.availableTickets > 0);
-      
-      return events.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
+    } catch (error) {
+      console.error('Firebase error, falling back to in-memory:', error.message);
     }
+    
+    // Fallback to in-memory
+    let events = [...inMemoryStorage.events];
+    
+    if (category && category !== 'all') {
+      events = events.filter(e => e.category === category);
+    }
+    
+    if (search) {
+      const searchLower = search.toLowerCase();
+      events = events.filter(e => 
+        e.title.toLowerCase().includes(searchLower) ||
+        e.location.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    events = events.filter(e => e.availableTickets > 0);
+    
+    return events.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
   },
 
   async findById(id) {
     const db = getDb();
     
-    if (db) {
-      const doc = await db.collection(COLLECTIONS.EVENTS).doc(id).get();
-      return firestoreHelpers.docToObject(doc);
-    } else {
-      return inMemoryStorage.events.find(e => e.id === id) || null;
+    try {
+      if (db) {
+        const doc = await db.collection(COLLECTIONS.EVENTS).doc(id).get();
+        return firestoreHelpers.docToObject(doc);
+      }
+    } catch (error) {
+      console.error('Firebase error in findById:', error.message);
     }
+    
+    return inMemoryStorage.events.find(e => e.id === id) || null;
   },
 
   async updateTickets(id, quantity) {
