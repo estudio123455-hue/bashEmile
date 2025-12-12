@@ -31,8 +31,10 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!user && !inAuthGroup) {
+      // No user, redirect to login
       router.replace('/(auth)/login');
     } else if (user && inAuthGroup) {
+      // User logged in, redirect to tabs (role-based views handled in tabs)
       router.replace('/(tabs)');
     }
   }, [user, isLoading, segments]);
