@@ -1,10 +1,7 @@
-export type UserRole = 'user' | 'organizer';
-
 export interface User {
   id: string;
   email: string;
   name: string;
-  role?: UserRole;
 }
 
 export interface Event {
@@ -37,7 +34,7 @@ export interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string, role?: UserRole) => Promise<boolean>;
+  register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
 
