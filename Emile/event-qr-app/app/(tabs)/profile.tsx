@@ -130,6 +130,16 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" size={20} color="#64748b" />
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/assistant' as any)}>
+          <View style={styles.menuItemLeft}>
+            <View style={[styles.menuIcon, { backgroundColor: 'rgba(16, 185, 129, 0.2)' }]}>
+              <Ionicons name="chatbubble-ellipses-outline" size={20} color="#10b981" />
+            </View>
+            <Text style={styles.menuItemText}>Asistente EventQR</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#64748b" />
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/settings/help' as any)}>
           <View style={styles.menuItemLeft}>
             <View style={[styles.menuIcon, { backgroundColor: 'rgba(245, 158, 11, 0.2)' }]}>
