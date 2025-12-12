@@ -3,12 +3,13 @@ import { useAuth } from '@/context/AuthContext';
 import { Event } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
     Platform,
+    Pressable,
     RefreshControl,
     StatusBar,
     StyleSheet,
@@ -187,12 +188,20 @@ export default function EventsScreen() {
           </Text>
           
           {/* CTA - Publicar evento gratis */}
-          <Link href={"/create-event" as any} style={styles.emptyPublishCtaLink}>
-            <View style={styles.emptyPublishCtaBtn}>
-              <Ionicons name="add-circle" size={22} color="#fff" />
-              <Text style={styles.emptyPublishCtaText}>Publica tu evento gratis</Text>
-            </View>
-          </Link>
+          <Pressable 
+            style={styles.emptyPublishCtaBtn}
+            onPress={() => {
+              console.log('[CTA] Button pressed - navigating to create-event');
+              if (Platform.OS === 'web') {
+                window.location.href = '/create-event';
+              } else {
+                router.push('/create-event' as any);
+              }
+            }}
+          >
+            <Ionicons name="add-circle" size={22} color="#fff" />
+            <Text style={styles.emptyPublishCtaText}>Publica tu evento gratis</Text>
+          </Pressable>
           
           <Text style={styles.emptyCtaSubtext}>
             Solo pagas comisión cuando vendes
@@ -340,10 +349,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  emptyPublishCtaLink: {
-    marginTop: 24,
-  },
   emptyPublishCtaBtn: {
+    marginTop: 24,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
