@@ -39,7 +39,7 @@ app.get('/api/health', (req, res) => {
     firebase: {
       initialized: firebaseInitialized,
       firestoreConnected: firestoreConnected,
-      projectId: process.env.FIREBASE_PROJECT_ID || 'not set',
+      projectId: (process.env.FIREBASE_PROJECT_ID || 'not set').trim(),
       hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
       hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
     }
