@@ -14,23 +14,27 @@ const initializeFirebase = () => {
   try {
     // Option 1: Using environment variables (for Vercel/production)
     if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+      // Clean environment variables (remove whitespace, newlines)
+      const projectId = (process.env.FIREBASE_PROJECT_ID || '').trim();
+      const clientEmail = (process.env.FIREBASE_CLIENT_EMAIL || '').trim();
+      let privateKey = (process.env.FIREBASE_PRIVATE_KEY || '').trim();
+      
       console.log('🔧 Initializing Firebase with env vars...');
-      console.log('   Project ID:', process.env.FIREBASE_PROJECT_ID);
-      console.log('   Client Email:', process.env.FIREBASE_CLIENT_EMAIL?.substring(0, 20) + '...');
+      console.log('   Project ID:', projectId);
+      console.log('   Client Email:', clientEmail.substring(0, 20) + '...');
       
       // Handle different formats of private key
-      let privateKey = process.env.FIREBASE_PRIVATE_KEY;
       if (privateKey.includes('\\n')) {
         privateKey = privateKey.replace(/\\n/g, '\n');
       }
       
       admin.initializeApp({
         credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          projectId: projectId,
+          clientEmail: clientEmail,
           privateKey: privateKey,
         }),
-        projectId: process.env.FIREBASE_PROJECT_ID,
+        projectId: projectId,
       });
     }
     // Option 2: Using service account JSON file (for local dev)
