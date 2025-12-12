@@ -53,6 +53,7 @@ function RootLayoutNav() {
         <Stack.Screen name="settings/help" options={{ presentation: 'card' }} />
         <Stack.Screen name="settings/terms" options={{ presentation: 'card' }} />
         <Stack.Screen name="assistant" options={{ presentation: 'card' }} />
+        <Stack.Screen name="create-event" options={{ presentation: 'card' }} />
       </Stack>
       <StatusBar style="light" />
     </ThemeProvider>

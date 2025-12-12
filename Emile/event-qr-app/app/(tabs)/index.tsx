@@ -6,14 +6,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  Platform,
-  RefreshControl,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Platform,
+    RefreshControl,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const API_BASE_URL = __DEV__
@@ -130,6 +131,31 @@ export default function EventsScreen() {
             <Text style={styles.statLabel}>Ciudades</Text>
           </View>
         </View>
+
+        {/* CTA - Publicar evento gratis */}
+        <TouchableOpacity 
+          style={styles.publishCta} 
+          onPress={() => router.push('/create-event' as any)}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#6366f1', '#8b5cf6']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.publishCtaGradient}
+          >
+            <View style={styles.publishCtaContent}>
+              <View style={styles.publishCtaLeft}>
+                <Ionicons name="add-circle" size={24} color="#fff" />
+                <View>
+                  <Text style={styles.publishCtaTitle}>Publica tu evento gratis</Text>
+                  <Text style={styles.publishCtaSubtitle}>Solo pagas comisión si vendes</Text>
+                </View>
+              </View>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
     ),
     [events, totalTickets]
@@ -301,5 +327,35 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'center',
     marginTop: 8,
+  },
+  publishCta: {
+    marginTop: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  publishCtaGradient: {
+    borderRadius: 16,
+  },
+  publishCtaContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  publishCtaLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  publishCtaTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  publishCtaSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
   },
 });
