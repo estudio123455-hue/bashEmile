@@ -2,105 +2,13 @@ const { getDb, COLLECTIONS, firestoreHelpers } = require('../config/firebase');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 
-// In-memory fallback storage
+// In-memory fallback storage (empty - no mock data)
 let inMemoryStorage = {
   users: [],
   events: [],
   tickets: [],
   orders: [],
 };
-
-// Initialize with mock events
-const initializeMockEvents = () => {
-  inMemoryStorage.events = [
-    {
-      id: '1',
-      title: 'Concierto de Rock',
-      description: 'Una noche increíble con las mejores bandas de rock en vivo.',
-      date: '2025-01-15',
-      time: '20:00',
-      location: 'Estadio Nacional',
-      price: 50000,
-      currency: 'COP',
-      image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800',
-      availableTickets: 500,
-      totalTickets: 1000,
-      category: 'concert',
-    },
-    {
-      id: '2',
-      title: 'Festival de Jazz',
-      description: 'El mejor jazz internacional en un ambiente íntimo.',
-      date: '2025-01-20',
-      time: '19:00',
-      location: 'Teatro Municipal',
-      price: 35000,
-      currency: 'COP',
-      image: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=800',
-      availableTickets: 200,
-      totalTickets: 300,
-      category: 'concert',
-    },
-    {
-      id: '3',
-      title: 'Conferencia Tech 2025',
-      description: 'Descubre las últimas tendencias en tecnología.',
-      date: '2025-02-01',
-      time: '09:00',
-      location: 'Centro de Convenciones',
-      price: 75000,
-      currency: 'COP',
-      image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
-      availableTickets: 300,
-      totalTickets: 500,
-      category: 'conference',
-    },
-    {
-      id: '4',
-      title: 'Exposición de Arte Moderno',
-      description: 'Una colección única de obras de artistas contemporáneos.',
-      date: '2025-02-10',
-      time: '10:00',
-      location: 'Museo de Arte Contemporáneo',
-      price: 15000,
-      currency: 'COP',
-      image: 'https://images.unsplash.com/photo-1531243269054-5ebf6f34081e?w=800',
-      availableTickets: 150,
-      totalTickets: 200,
-      category: 'general',
-    },
-    {
-      id: '5',
-      title: 'Stand Up Comedy Night',
-      description: 'Los mejores comediantes del país en una noche llena de risas.',
-      date: '2025-02-15',
-      time: '21:00',
-      location: 'Club de Comedia Central',
-      price: 25000,
-      currency: 'COP',
-      image: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800',
-      availableTickets: 100,
-      totalTickets: 150,
-      category: 'theater',
-    },
-    {
-      id: '6',
-      title: 'Maratón Ciudad 2025',
-      description: 'Participa en la carrera más importante del año.',
-      date: '2025-03-01',
-      time: '07:00',
-      location: 'Parque Central',
-      price: 30000,
-      currency: 'COP',
-      image: 'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?w=800',
-      availableTickets: 1000,
-      totalTickets: 2000,
-      category: 'sports',
-    },
-  ];
-};
-
-initializeMockEvents();
 
 // ============ USER SERVICES ============
 
