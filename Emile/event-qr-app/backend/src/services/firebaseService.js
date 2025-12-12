@@ -13,16 +13,19 @@ let inMemoryStorage = {
 // ============ USER SERVICES ============
 
 const userService = {
-  // Create user from Firebase Auth (no password needed)
+  // Create user from Firebase Auth with role (called ONLY during registration)
   async createFromFirebase(firebaseUser) {
     const db = getDb();
-    const { uid, email, name } = firebaseUser;
+    const { uid, email, name, role } = firebaseUser;
+    
+    // SECURITY: Role is set ONLY during registration and is immutable
+    const validRole = ['user', 'organizer'].includes(role) ? role : 'user';
     
     const user = {
       id: uid,
       name: name || email?.split('@')[0] || 'Usuario',
       email: email?.toLowerCase() || '',
-      role: 'user', // Default role, can be changed by admin
+      role: validRole, // Role set once during registration
       avatar: null,
       active: true,
       createdAt: new Date().toISOString(),
@@ -31,7 +34,20 @@ const userService = {
 
     try {
       if (db) {
-        await db.collection(COLLECTIONS.USERS).doc(uid).set(user);
+        // Use set with merge:false to ensure we don't overwrite existing users
+        // This should only be called for NEW users
+        const docRef = db.collection(COLLECTIONS.USERS).doc(uid);
+        const existingDoc = await docRef.get();
+        
+        if (existingDoc.exists) {
+          // User already exists - return existing data, DO NOT overwrite
+          console.log('createFromFirebase: User already exists, returning existing');
+          return { id: existingDoc.id, ...existingDoc.data() };
+        }
+        
+        // New user - create with role
+        await docRef.set(user);
+        console.log('createFromFirebase: New user created with role:', validRole);
         return user;
       }
     } catch (error) {
@@ -39,6 +55,10 @@ const userService = {
     }
     
     // Fallback to in-memory
+    const existingUser = inMemoryStorage.users.find(u => u.id === uid);
+    if (existingUser) {
+      return existingUser;
+    }
     inMemoryStorage.users.push(user);
     return user;
   },

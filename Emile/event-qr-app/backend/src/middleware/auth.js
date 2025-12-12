@@ -33,24 +33,25 @@ const auth = async (req, res, next) => {
     console.log('Auth: Token verified for user:', decodedToken.uid);
     
     // Get user from database (source of truth for roles)
-    let user = await userService.findById(decodedToken.uid);
+    const user = await userService.findById(decodedToken.uid);
     
-    // If user doesn't exist in DB, create them
-    if (!user) {
-      user = await userService.createFromFirebase({
-        uid: decodedToken.uid,
-        email: decodedToken.email,
-        name: decodedToken.name || decodedToken.email?.split('@')[0] || 'Usuario',
-      });
-    }
+    // SECURITY: Do NOT auto-create users here
+    // Users must be created via /auth/register endpoint
+    // This ensures role is only set during registration
     
     // Attach user info to request
     req.userId = decodedToken.uid;
-    req.user = {
+    req.user = user ? {
       uid: decodedToken.uid,
       email: decodedToken.email,
       role: user.role || 'user',
       ...user,
+    } : {
+      // User not in DB yet (will be created via /auth/register)
+      uid: decodedToken.uid,
+      email: decodedToken.email,
+      name: decodedToken.name || decodedToken.email?.split('@')[0] || 'Usuario',
+      role: 'user', // Default until registered
     };
     
     next();

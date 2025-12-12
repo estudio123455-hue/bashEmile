@@ -23,18 +23,19 @@ export interface UserProfile extends User {
   role?: UserRole;
 }
 
-// Sync user with backend after Firebase auth
-const syncUserWithBackend = async (firebaseUser: FirebaseUser, role?: UserRole): Promise<UserProfile | null> => {
+// Sync user with backend after login (NEVER sends role - role is read-only)
+const syncUserWithBackend = async (firebaseUser: FirebaseUser): Promise<UserProfile | null> => {
   try {
     const idToken = await firebaseUser.getIdToken();
     
+    // SECURITY: Never send role in sync - role is immutable after registration
     const response = await fetch(`${API_BASE_URL}/auth/sync`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${idToken}`,
       },
-      body: JSON.stringify({ role }),
+      body: JSON.stringify({}), // Empty body - no role
     });
 
     const data = await response.json();
@@ -52,12 +53,49 @@ const syncUserWithBackend = async (firebaseUser: FirebaseUser, role?: UserRole):
     };
   } catch (error) {
     console.error('Error syncing with backend:', error);
-    // Return basic user info on error
     return {
       id: firebaseUser.uid,
       name: firebaseUser.displayName || 'Usuario',
       email: firebaseUser.email || '',
       role: 'user',
+    };
+  }
+};
+
+// Register user with backend (ONLY place where role is set)
+const registerUserWithBackend = async (firebaseUser: FirebaseUser, role: UserRole): Promise<UserProfile | null> => {
+  try {
+    const idToken = await firebaseUser.getIdToken();
+    
+    // Role is ONLY sent during registration
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ role }),
+    });
+
+    const data = await response.json();
+    
+    if (data.success && data.data?.user) {
+      return data.data.user;
+    }
+    
+    return {
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName || 'Usuario',
+      email: firebaseUser.email || '',
+      role: role,
+    };
+  } catch (error) {
+    console.error('Error registering with backend:', error);
+    return {
+      id: firebaseUser.uid,
+      name: firebaseUser.displayName || 'Usuario',
+      email: firebaseUser.email || '',
+      role: role,
     };
   }
 };
@@ -104,8 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Update display name in Firebase
       await updateProfile(firebaseUser, { displayName: name });
 
-      // Sync with backend (creates user in DB with role)
-      const userProfile = await syncUserWithBackend(firebaseUser, role);
+      // Register with backend (ONLY place where role is set)
+      const userProfile = await registerUserWithBackend(firebaseUser, role);
       setUser(userProfile);
       return true;
     } catch (error: any) {
