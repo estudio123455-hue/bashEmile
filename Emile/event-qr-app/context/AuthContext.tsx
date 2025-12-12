@@ -4,12 +4,13 @@ import React, { createContext, ReactNode, useContext, useEffect, useState } from
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const USERS_KEY = '@event_app_users';
 const CURRENT_USER_KEY = '@event_app_current_user';
+const TOKEN_KEY = '@event_app_token';
 
-interface StoredUser extends User {
-  password: string;
-}
+// API Configuration
+const API_BASE_URL = __DEV__ 
+  ? 'http://localhost:3001/api'
+  : 'https://backend-estudio123455-hues-projects.vercel.app/api';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -32,30 +33,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const getUsers = async (): Promise<StoredUser[]> => {
-    try {
-      const users = await AsyncStorage.getItem(USERS_KEY);
-      return users ? JSON.parse(users) : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const saveUsers = async (users: StoredUser[]) => {
-    await AsyncStorage.setItem(USERS_KEY, JSON.stringify(users));
-  };
-
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const users = await getUsers();
-      const foundUser = users.find(
-        (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-      );
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (foundUser) {
-        const { password: _, ...userWithoutPassword } = foundUser;
-        setUser(userWithoutPassword);
-        await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        const { user: userData, token } = data.data;
+        setUser(userData);
+        await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
+        await AsyncStorage.setItem(TOKEN_KEY, token);
         return true;
       }
       return false;
@@ -67,26 +61,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (name: string, email: string, password: string): Promise<boolean> => {
     try {
-      const users = await getUsers();
-      const existingUser = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, email, password }),
+      });
 
-      if (existingUser) {
-        return false;
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        const { user: userData, token } = data.data;
+        setUser(userData);
+        await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
+        await AsyncStorage.setItem(TOKEN_KEY, token);
+        return true;
       }
-
-      const newUser: StoredUser = {
-        id: Date.now().toString(),
-        name,
-        email,
-        password,
-      };
-
-      await saveUsers([...users, newUser]);
-
-      const { password: _, ...userWithoutPassword } = newUser;
-      setUser(userWithoutPassword);
-      await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
-      return true;
+      return false;
     } catch (error) {
       console.error('Error during registration:', error);
       return false;
@@ -96,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setUser(null);
     await AsyncStorage.removeItem(CURRENT_USER_KEY);
+    await AsyncStorage.removeItem(TOKEN_KEY);
   };
 
   return (
