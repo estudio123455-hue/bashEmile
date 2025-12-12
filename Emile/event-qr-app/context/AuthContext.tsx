@@ -1,12 +1,12 @@
 import { auth } from '@/config/firebase';
 import { AuthContextType, User } from '@/types';
 import {
-  createUserWithEmailAndPassword,
-  User as FirebaseUser,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-  updateProfile
+    createUserWithEmailAndPassword,
+    User as FirebaseUser,
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    signOut,
+    updateProfile
 } from 'firebase/auth';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
@@ -17,12 +17,8 @@ const API_BASE_URL = __DEV__
   ? 'http://localhost:3001/api'
   : 'https://backend-estudio123455-hues-projects.vercel.app/api';
 
-export interface UserProfile extends User {
-  role?: string;
-}
-
 // Sync user with backend
-const syncUserWithBackend = async (firebaseUser: FirebaseUser): Promise<UserProfile | null> => {
+const syncUserWithBackend = async (firebaseUser: FirebaseUser): Promise<User | null> => {
   try {
     const idToken = await firebaseUser.getIdToken();
     
@@ -45,6 +41,7 @@ const syncUserWithBackend = async (firebaseUser: FirebaseUser): Promise<UserProf
       id: firebaseUser.uid,
       name: firebaseUser.displayName || 'Usuario',
       email: firebaseUser.email || '',
+      isPremium: false,
     };
   } catch (error) {
     console.error('Error syncing with backend:', error);
@@ -52,12 +49,13 @@ const syncUserWithBackend = async (firebaseUser: FirebaseUser): Promise<UserProf
       id: firebaseUser.uid,
       name: firebaseUser.displayName || 'Usuario',
       email: firebaseUser.email || '',
+      isPremium: false,
     };
   }
 };
 
 // Register user with backend
-const registerUserWithBackend = async (firebaseUser: FirebaseUser): Promise<UserProfile | null> => {
+const registerUserWithBackend = async (firebaseUser: FirebaseUser): Promise<User | null> => {
   try {
     const idToken = await firebaseUser.getIdToken();
     
@@ -67,7 +65,7 @@ const registerUserWithBackend = async (firebaseUser: FirebaseUser): Promise<User
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${idToken}`,
       },
-      body: JSON.stringify({ role: 'user' }), // All users are 'user' role
+      body: JSON.stringify({}),
     });
 
     const data = await response.json();
@@ -80,6 +78,7 @@ const registerUserWithBackend = async (firebaseUser: FirebaseUser): Promise<User
       id: firebaseUser.uid,
       name: firebaseUser.displayName || 'Usuario',
       email: firebaseUser.email || '',
+      isPremium: false,
     };
   } catch (error) {
     console.error('Error registering with backend:', error);
@@ -87,12 +86,13 @@ const registerUserWithBackend = async (firebaseUser: FirebaseUser): Promise<User
       id: firebaseUser.uid,
       name: firebaseUser.displayName || 'Usuario',
       email: firebaseUser.email || '',
+      isPremium: false,
     };
   }
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

@@ -44,14 +44,13 @@ const auth = async (req, res, next) => {
     req.user = user ? {
       uid: decodedToken.uid,
       email: decodedToken.email,
-      role: user.role || 'user',
+      isPremium: user.isPremium || false,
       ...user,
     } : {
-      // User not in DB yet (will be created via /auth/register)
       uid: decodedToken.uid,
       email: decodedToken.email,
       name: decodedToken.name || decodedToken.email?.split('@')[0] || 'Usuario',
-      role: 'user', // Default until registered
+      isPremium: false,
     };
     
     next();
@@ -99,7 +98,7 @@ const optionalAuth = async (req, res, next) => {
       req.user = {
         uid: decodedToken.uid,
         email: decodedToken.email,
-        role: user.role || 'user',
+        isPremium: user.isPremium || false,
         ...user,
       };
     }
@@ -111,27 +110,27 @@ const optionalAuth = async (req, res, next) => {
 };
 
 /**
- * Role-based authorization middleware
- * Use after auth middleware to check user roles
+ * Premium authorization middleware
+ * Use after auth middleware to check if user is premium
  */
-const requireRole = (...allowedRoles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required',
-      });
-    }
-    
-    if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Insufficient permissions',
-      });
-    }
-    
-    next();
-  };
+const requirePremium = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      error: 'Authentication required',
+    });
+  }
+  
+  // SECURITY: isPremium is read from database, never from frontend
+  if (!req.user.isPremium) {
+    return res.status(403).json({
+      success: false,
+      error: 'Premium subscription required to publish events',
+      code: 'PREMIUM_REQUIRED',
+    });
+  }
+  
+  next();
 };
 
-module.exports = { auth, optionalAuth, requireRole };
+module.exports = { auth, optionalAuth, requirePremium };

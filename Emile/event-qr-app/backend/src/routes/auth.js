@@ -1,5 +1,4 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
 const { auth } = require('../middleware/auth');
 const { userService } = require('../services/firebaseService');
 
@@ -7,20 +6,13 @@ const router = express.Router();
 
 /**
  * POST /api/auth/register
- * Register a new user with a specific role
- * Called ONLY during registration - role is immutable after this
- * Requires Firebase ID token in Authorization header
+ * Register a new user (all users start as free)
  */
 router.post('/register', auth, async (req, res) => {
   try {
-    const { role } = req.body;
-    
-    // Check if user already exists in database
     const existingUser = await userService.findById(req.userId);
     
     if (existingUser) {
-      // User already registered - return existing data, DO NOT modify role
-      console.log('Register: User already exists, returning existing data. Role:', existingUser.role);
       return res.json({
         success: true,
         data: {
@@ -28,7 +20,7 @@ router.post('/register', auth, async (req, res) => {
             id: existingUser.id || req.userId,
             name: existingUser.name,
             email: existingUser.email,
-            role: existingUser.role,
+            isPremium: existingUser.isPremium || false,
             avatar: existingUser.avatar,
           },
         },
@@ -36,17 +28,11 @@ router.post('/register', auth, async (req, res) => {
       });
     }
     
-    // New user - create with specified role (only time role can be set)
-    const validRole = ['user', 'organizer'].includes(role) ? role : 'user';
-    
     const newUser = await userService.createFromFirebase({
       uid: req.userId,
       email: req.user.email,
       name: req.user.name || req.user.email?.split('@')[0] || 'Usuario',
-      role: validRole, // Role is set ONLY here, during registration
     });
-    
-    console.log('Register: New user created with role:', validRole);
     
     res.status(201).json({
       success: true,
@@ -55,7 +41,7 @@ router.post('/register', auth, async (req, res) => {
           id: newUser.id || req.userId,
           name: newUser.name,
           email: newUser.email,
-          role: newUser.role,
+          isPremium: newUser.isPremium || false,
           avatar: newUser.avatar,
         },
       },
@@ -73,18 +59,10 @@ router.post('/register', auth, async (req, res) => {
 /**
  * POST /api/auth/sync
  * Sync Firebase user with backend database
- * Called after Firebase Auth login on frontend
- * NEVER modifies role - only reads existing user data
- * Requires Firebase ID token in Authorization header
  */
 router.post('/sync', auth, async (req, res) => {
   try {
-    // SECURITY: Ignore any role sent from frontend
-    // Role is ONLY set during registration via /auth/register
-    
     const user = req.user;
-    
-    console.log('Sync: User', req.userId, 'role:', user?.role);
     
     res.json({
       success: true,
@@ -93,7 +71,7 @@ router.post('/sync', auth, async (req, res) => {
           id: user.id || user.uid || req.userId,
           name: user.name,
           email: user.email,
-          role: user.role || 'user',
+          isPremium: user.isPremium || false,
           avatar: user.avatar,
         },
       },
@@ -107,56 +85,6 @@ router.post('/sync', auth, async (req, res) => {
   }
 });
 
-/**
- * POST /api/auth/fix-role
- * TEMPORARY: Fix role for existing users who were affected by the bug
- * This should be removed after migration is complete
- */
-router.post('/fix-role', auth, async (req, res) => {
-  try {
-    const { targetRole } = req.body;
-    
-    // Validate role
-    if (!['user', 'organizer'].includes(targetRole)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid role. Must be "user" or "organizer"',
-      });
-    }
-    
-    // Update user's role
-    const updatedUser = await userService.update(req.userId, { role: targetRole });
-    
-    if (!updatedUser) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found',
-      });
-    }
-    
-    console.log('Fix-role: User', req.userId, 'role changed to:', targetRole);
-    
-    res.json({
-      success: true,
-      data: {
-        user: {
-          id: updatedUser.id || req.userId,
-          name: updatedUser.name,
-          email: updatedUser.email,
-          role: updatedUser.role,
-        },
-      },
-      message: `Role updated to ${targetRole}`,
-    });
-  } catch (error) {
-    console.error('Fix-role error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error fixing role',
-    });
-  }
-});
-
 // GET /api/auth/me - Get current user profile
 router.get('/me', auth, async (req, res) => {
   try {
@@ -166,7 +94,7 @@ router.get('/me', auth, async (req, res) => {
         id: req.user.id || req.user.uid,
         name: req.user.name,
         email: req.user.email,
-        role: req.user.role,
+        isPremium: req.user.isPremium || false,
         avatar: req.user.avatar,
       },
     });
@@ -202,6 +130,7 @@ router.put('/profile', auth, async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        isPremium: user.isPremium || false,
         avatar: user.avatar,
       },
     });
@@ -209,6 +138,43 @@ router.put('/profile', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error updating profile',
+    });
+  }
+});
+
+/**
+ * POST /api/auth/activate-premium
+ * Activate premium for current user (called after payment verification)
+ * In production, this should be called from a webhook after payment confirmation
+ */
+router.post('/activate-premium', auth, async (req, res) => {
+  try {
+    const updatedUser = await userService.activatePremium(req.userId);
+    
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          isPremium: true,
+        },
+      },
+      message: 'Premium activated successfully',
+    });
+  } catch (error) {
+    console.error('Activate premium error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error activating premium',
     });
   }
 });

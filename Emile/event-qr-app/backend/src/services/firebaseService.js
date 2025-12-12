@@ -13,19 +13,16 @@ let inMemoryStorage = {
 // ============ USER SERVICES ============
 
 const userService = {
-  // Create user from Firebase Auth with role (called ONLY during registration)
+  // Create user from Firebase Auth (called during registration)
   async createFromFirebase(firebaseUser) {
     const db = getDb();
-    const { uid, email, name, role } = firebaseUser;
-    
-    // SECURITY: Role is set ONLY during registration and is immutable
-    const validRole = ['user', 'organizer'].includes(role) ? role : 'user';
+    const { uid, email, name } = firebaseUser;
     
     const user = {
       id: uid,
       name: name || email?.split('@')[0] || 'Usuario',
       email: email?.toLowerCase() || '',
-      role: validRole, // Role set once during registration
+      isPremium: false, // All users start as free
       avatar: null,
       active: true,
       createdAt: new Date().toISOString(),
@@ -34,20 +31,16 @@ const userService = {
 
     try {
       if (db) {
-        // Use set with merge:false to ensure we don't overwrite existing users
-        // This should only be called for NEW users
         const docRef = db.collection(COLLECTIONS.USERS).doc(uid);
         const existingDoc = await docRef.get();
         
         if (existingDoc.exists) {
-          // User already exists - return existing data, DO NOT overwrite
           console.log('createFromFirebase: User already exists, returning existing');
           return { id: existingDoc.id, ...existingDoc.data() };
         }
         
-        // New user - create with role
         await docRef.set(user);
-        console.log('createFromFirebase: New user created with role:', validRole);
+        console.log('createFromFirebase: New user created');
         return user;
       }
     } catch (error) {
@@ -61,6 +54,33 @@ const userService = {
     }
     inMemoryStorage.users.push(user);
     return user;
+  },
+  
+  // Activate premium for a user (called after payment verification)
+  async activatePremium(userId) {
+    const db = getDb();
+    
+    try {
+      if (db) {
+        await db.collection(COLLECTIONS.USERS).doc(userId).update({
+          isPremium: true,
+          premiumActivatedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        const doc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
+        return firestoreHelpers.docToObject(doc);
+      }
+    } catch (error) {
+      console.error('Firebase error in activatePremium:', error.message);
+    }
+    
+    const index = inMemoryStorage.users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      inMemoryStorage.users[index].isPremium = true;
+      inMemoryStorage.users[index].premiumActivatedAt = new Date().toISOString();
+      return inMemoryStorage.users[index];
+    }
+    return null;
   },
 
   async create(userData) {
