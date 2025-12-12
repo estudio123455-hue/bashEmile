@@ -29,7 +29,21 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  const { admin, getDb } = require('../src/config/firebase');
+  const firebaseInitialized = admin.apps.length > 0;
+  const firestoreConnected = getDb() !== null;
+  
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    firebase: {
+      initialized: firebaseInitialized,
+      firestoreConnected: firestoreConnected,
+      projectId: process.env.FIREBASE_PROJECT_ID || 'not set',
+      hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
+      hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+    }
+  });
 });
 
 // API Routes

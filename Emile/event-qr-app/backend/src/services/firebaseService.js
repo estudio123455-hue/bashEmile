@@ -145,22 +145,28 @@ const eventService = {
     
     try {
       if (db) {
-        let query = db.collection(COLLECTIONS.EVENTS);
-        
-        if (category && category !== 'all') {
-          query = query.where('category', '==', category);
-        }
-        
-        query = query.where('availableTickets', '>', 0);
+        // Only get published events, ordered by creation date
+        let query = db.collection(COLLECTIONS.EVENTS)
+          .where('status', '==', 'published')
+          .orderBy('createdAt', 'desc');
         
         const snapshot = await query.limit(parseInt(limit)).get();
         let events = firestoreHelpers.queryToArray(snapshot);
         
+        // Filter by category if specified
+        if (category && category !== 'all') {
+          events = events.filter(e => e.category === category);
+        }
+        
+        // Filter by available tickets
+        events = events.filter(e => e.availableTickets > 0);
+        
+        // Search filter
         if (search) {
           const searchLower = search.toLowerCase();
           events = events.filter(e => 
-            e.title.toLowerCase().includes(searchLower) ||
-            e.location.toLowerCase().includes(searchLower)
+            e.title?.toLowerCase().includes(searchLower) ||
+            e.location?.toLowerCase().includes(searchLower)
           );
         }
         
@@ -170,8 +176,8 @@ const eventService = {
       console.error('Firebase error, falling back to in-memory:', error.message);
     }
     
-    // Fallback to in-memory
-    let events = [...inMemoryStorage.events];
+    // Fallback to in-memory - only published events
+    let events = inMemoryStorage.events.filter(e => e.status === 'published');
     
     if (category && category !== 'all') {
       events = events.filter(e => e.category === category);
@@ -180,8 +186,8 @@ const eventService = {
     if (search) {
       const searchLower = search.toLowerCase();
       events = events.filter(e => 
-        e.title.toLowerCase().includes(searchLower) ||
-        e.location.toLowerCase().includes(searchLower)
+        e.title?.toLowerCase().includes(searchLower) ||
+        e.location?.toLowerCase().includes(searchLower)
       );
     }
     
