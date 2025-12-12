@@ -6,13 +6,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Platform,
   RefreshControl,
   StatusBar,
   StyleSheet,
   Text,
-  View
+  View,
 } from 'react-native';
 
 const API_BASE_URL = __DEV__

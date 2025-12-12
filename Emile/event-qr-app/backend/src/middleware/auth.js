@@ -10,6 +10,7 @@ const auth = async (req, res, next) => {
     const authHeader = req.header('Authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('Auth: No token provided');
       return res.status(401).json({
         success: false,
         error: 'No token provided',
@@ -18,8 +19,18 @@ const auth = async (req, res, next) => {
 
     const idToken = authHeader.replace('Bearer ', '');
     
+    // Check if Firebase Admin is initialized
+    if (!admin.apps.length) {
+      console.error('Auth: Firebase Admin not initialized');
+      return res.status(500).json({
+        success: false,
+        error: 'Server configuration error',
+      });
+    }
+    
     // Verify Firebase ID token
     const decodedToken = await admin.auth().verifyIdToken(idToken);
+    console.log('Auth: Token verified for user:', decodedToken.uid);
     
     // Get user from database (source of truth for roles)
     let user = await userService.findById(decodedToken.uid);

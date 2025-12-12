@@ -18,19 +18,26 @@ router.post('/sync', auth, async (req, res) => {
     // User already exists (created by auth middleware if needed)
     let user = req.user;
     
-    // If role is provided and user is new, update role
+    console.log('Sync request - userId:', req.userId, 'requested role:', role, 'current role:', user?.role);
+    
+    // If role is provided and valid, update role
+    // Only allow role change if user doesn't have a role yet or is still 'user'
     if (role && ['user', 'organizer'].includes(role)) {
-      user = await userService.update(req.userId, { role });
+      const updatedUser = await userService.update(req.userId, { role });
+      if (updatedUser) {
+        user = updatedUser;
+        console.log('Role updated to:', role);
+      }
     }
     
     res.json({
       success: true,
       data: {
         user: {
-          id: user.id || user.uid,
+          id: user.id || user.uid || req.userId,
           name: user.name,
           email: user.email,
-          role: user.role,
+          role: user.role || 'user',
           avatar: user.avatar,
         },
       },

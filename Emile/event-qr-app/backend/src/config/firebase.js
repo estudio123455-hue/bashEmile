@@ -7,17 +7,28 @@ const initializeFirebase = () => {
   // Prevent re-initialization
   if (admin.apps.length > 0) {
     db = admin.firestore();
+    console.log('✅ Firebase already initialized');
     return db;
   }
 
   try {
     // Option 1: Using environment variables (for Vercel/production)
     if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+      console.log('🔧 Initializing Firebase with env vars...');
+      console.log('   Project ID:', process.env.FIREBASE_PROJECT_ID);
+      console.log('   Client Email:', process.env.FIREBASE_CLIENT_EMAIL?.substring(0, 20) + '...');
+      
+      // Handle different formats of private key
+      let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+      if (privateKey.includes('\\n')) {
+        privateKey = privateKey.replace(/\\n/g, '\n');
+      }
+      
       admin.initializeApp({
         credential: admin.credential.cert({
           projectId: process.env.FIREBASE_PROJECT_ID,
           clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+          privateKey: privateKey,
         }),
         projectId: process.env.FIREBASE_PROJECT_ID,
       });
@@ -42,6 +53,7 @@ const initializeFirebase = () => {
     return db;
   } catch (error) {
     console.error('❌ Firebase initialization error:', error.message);
+    console.error('   Full error:', error);
     return null;
   }
 };
