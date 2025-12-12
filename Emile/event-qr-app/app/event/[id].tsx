@@ -1,23 +1,28 @@
 import { useAuth } from '@/context/AuthContext';
 import { useTickets } from '@/context/TicketContext';
-import { MOCK_EVENTS } from '@/data/events';
+import { Event } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  Image,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    Image,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import PayPalCheckout from '../../components/payment/PayPalCheckout';
+
+const API_BASE_URL = __DEV__
+  ? 'http://localhost:3001/api'
+  : 'https://backend-estudio123455-hues-projects.vercel.app/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const HERO_HEIGHT = 240;
@@ -38,12 +43,55 @@ export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { purchaseTicket } = useTickets();
+  const [event, setEvent] = useState<Event | null>(null);
+  const [isLoadingEvent, setIsLoadingEvent] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showPayPal, setShowPayPal] = useState(false);
   const scrollY = new Animated.Value(0);
 
-  const event = MOCK_EVENTS.find((e) => e.id === id);
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/events/${id}`);
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          const eventData = data.data;
+          setEvent({
+            id: eventData.id,
+            title: eventData.title,
+            description: eventData.description,
+            date: eventData.date,
+            time: eventData.time,
+            location: eventData.location,
+            price: eventData.ticketPrice || eventData.price,
+            image: eventData.imageUrl || eventData.image,
+            availableTickets: eventData.availableTickets || eventData.capacity,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching event:', error);
+      } finally {
+        setIsLoadingEvent(false);
+      }
+    };
+
+    if (id) {
+      fetchEvent();
+    }
+  }, [id]);
+
+  if (isLoadingEvent) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.errorContainer}>
+          <ActivityIndicator size="large" color="#6366f1" />
+          <Text style={styles.errorText}>Cargando evento...</Text>
+        </View>
+      </View>
+    );
+  }
 
   if (!event) {
     return (
