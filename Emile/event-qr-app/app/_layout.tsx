@@ -34,8 +34,12 @@ function RootLayoutNav() {
       // No user, redirect to login
       router.replace('/(auth)/login');
     } else if (user && inAuthGroup) {
-      // User logged in, redirect to tabs (role-based views handled in tabs)
-      router.replace('/(tabs)');
+      // User logged in, redirect based on role
+      if (user.role === 'organizer') {
+        router.replace('/(organizer)' as any);
+      } else {
+        router.replace('/(tabs)');
+      }
     }
   }, [user, isLoading, segments]);
 
@@ -48,6 +52,7 @@ function RootLayoutNav() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(organizer)" />
         <Stack.Screen name="event/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="ticket/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="settings/edit-profile" options={{ presentation: 'card' }} />

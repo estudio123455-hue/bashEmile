@@ -312,6 +312,52 @@ const eventService = {
     }
   },
 
+  async findByOrganizerId(organizerId) {
+    const db = getDb();
+    
+    try {
+      if (db) {
+        const snapshot = await db.collection(COLLECTIONS.EVENTS)
+          .where('organizerId', '==', organizerId)
+          .orderBy('createdAt', 'desc')
+          .get();
+        return firestoreHelpers.queryToArray(snapshot);
+      }
+    } catch (error) {
+      console.error('Firebase error in findByOrganizerId:', error.message);
+    }
+    
+    return inMemoryStorage.events.filter(e => e.organizerId === organizerId);
+  },
+
+  async update(id, updateData) {
+    const db = getDb();
+    
+    try {
+      if (db) {
+        await db.collection(COLLECTIONS.EVENTS).doc(id).update({
+          ...updateData,
+          updatedAt: new Date().toISOString(),
+        });
+        const doc = await db.collection(COLLECTIONS.EVENTS).doc(id).get();
+        return firestoreHelpers.docToObject(doc);
+      }
+    } catch (error) {
+      console.error('Firebase error in update event:', error.message);
+    }
+    
+    const index = inMemoryStorage.events.findIndex(e => e.id === id);
+    if (index !== -1) {
+      inMemoryStorage.events[index] = { 
+        ...inMemoryStorage.events[index], 
+        ...updateData,
+        updatedAt: new Date().toISOString(),
+      };
+      return inMemoryStorage.events[index];
+    }
+    return null;
+  },
+
   async create(eventData) {
     const db = getDb();
     const event = {

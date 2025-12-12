@@ -9,6 +9,7 @@ const eventRoutes = require('../src/routes/events');
 const ticketRoutes = require('../src/routes/tickets');
 const paypalRoutes = require('../src/routes/paypal');
 const webhookRoutes = require('../src/routes/webhooks');
+const organizerRoutes = require('../src/routes/organizer');
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/paypal', paypalRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/organizer', organizerRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
