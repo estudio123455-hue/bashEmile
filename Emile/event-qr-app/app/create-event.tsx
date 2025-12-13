@@ -50,33 +50,42 @@ export default function CreateEventScreen() {
     }
   };
 
+  const showValidationError = (msg: string) => {
+    console.log('[VALIDATION ERROR]', msg);
+    if (Platform.OS === 'web') {
+      window.alert(msg);
+    } else {
+      Alert.alert('Error', msg);
+    }
+  };
+
   const validateForm = () => {
     if (!title.trim() || title.length < 3) {
-      Alert.alert('Error', 'El título debe tener al menos 3 caracteres');
+      showValidationError('El título debe tener al menos 3 caracteres');
       return false;
     }
     if (!description.trim() || description.length < 10) {
-      Alert.alert('Error', 'La descripción debe tener al menos 10 caracteres');
+      showValidationError('La descripción debe tener al menos 10 caracteres');
       return false;
     }
     if (!date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      Alert.alert('Error', 'Fecha inválida. Usa formato YYYY-MM-DD');
+      showValidationError('Fecha inválida. Usa formato YYYY-MM-DD');
       return false;
     }
     if (!time.match(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)) {
-      Alert.alert('Error', 'Hora inválida. Usa formato HH:MM');
+      showValidationError('Hora inválida. Usa formato HH:MM');
       return false;
     }
     if (!location.trim() || location.length < 3) {
-      Alert.alert('Error', 'La ubicación debe tener al menos 3 caracteres');
+      showValidationError('La ubicación debe tener al menos 3 caracteres');
       return false;
     }
     if (!ticketPrice || parseFloat(ticketPrice) < 0) {
-      Alert.alert('Error', 'El precio debe ser mayor o igual a 0');
+      showValidationError('El precio debe ser mayor o igual a 0');
       return false;
     }
     if (!capacity || parseInt(capacity) < 1) {
-      Alert.alert('Error', 'La capacidad debe ser al menos 1');
+      showValidationError('La capacidad debe ser al menos 1');
       return false;
     }
     return true;
