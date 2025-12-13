@@ -22,7 +22,7 @@ import PayPalCheckout from '../../components/payment/PayPalCheckout';
 
 const API_BASE_URL = __DEV__
   ? 'http://localhost:3001/api'
-  : 'https://backend-estudio123455-hues-projects.vercel.app/api';
+  : 'https://event-qr-pputt9ob4-estudio123455-hues-projects.vercel.app/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const HERO_HEIGHT = 240;
