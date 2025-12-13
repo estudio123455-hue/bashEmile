@@ -94,6 +94,26 @@ router.post('/', auth, createEventValidation, async (req, res) => {
 
     const { title, description, date, time, location, category, ticketPrice, capacity, imageUrl } = req.body;
 
+    // Parse and validate ticketPrice
+    const parsedPrice = parseFloat(ticketPrice);
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid ticket price: ${ticketPrice}. Must be a valid number >= 0`,
+      });
+    }
+
+    // Parse and validate capacity
+    const parsedCapacity = parseInt(capacity);
+    if (isNaN(parsedCapacity) || parsedCapacity < 1) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid capacity: ${capacity}. Must be a valid number >= 1`,
+      });
+    }
+
+    console.log('[EVENT-CREATE] Creating event with price:', parsedPrice, 'capacity:', parsedCapacity);
+
     // Create event with owner ID from token (NEVER trust client-sent ownerId)
     const eventData = {
       ownerId: req.userId, // Always from verified token
@@ -103,9 +123,9 @@ router.post('/', auth, createEventValidation, async (req, res) => {
       time,
       location,
       category,
-      ticketPrice: parseFloat(ticketPrice),
-      capacity: parseInt(capacity),
-      availableTickets: parseInt(capacity),
+      ticketPrice: parsedPrice,
+      capacity: parsedCapacity,
+      availableTickets: parsedCapacity,
       ticketsSold: 0,
       ticketsScanned: 0,
       imageUrl: imageUrl || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
