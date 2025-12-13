@@ -127,6 +127,7 @@ router.post('/create-order', auth, async (req, res) => {
       });
 
       console.log('[PAYPAL] Sending to PayPal:', { totalUSD: fees.totalUSD.toFixed(2) });
+      console.log('PAYPAL REQUEST BODY >>>', JSON.stringify(request.requestBody(), null, 2));
 
       const paypalOrder = await paypalClient.execute(request);
       order.paypalOrderId = paypalOrder.result.id;
