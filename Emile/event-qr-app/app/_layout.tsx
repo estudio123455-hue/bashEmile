@@ -10,7 +10,7 @@ import { TicketProvider } from '@/context/TicketContext';
 // Pre-warm the backend to reduce cold start delay
 const API_BASE_URL = __DEV__ 
   ? 'http://localhost:3001'
-  : 'https://event-qr-pputt9ob4-estudio123455-hues-projects.vercel.app/api';
+  : 'https://backend-estudio123455-hues-projects.vercel.app';
 
 const warmUpBackend = () => {
   fetch(`${API_BASE_URL}/health`).catch(() => {});

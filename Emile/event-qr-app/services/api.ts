@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // API Configuration
 const API_BASE_URL = __DEV__ 
   ? 'http://localhost:3001/api'  // Development
-  : 'https://event-qr-pputt9ob4-estudio123455-hues-projects.vercel.app/api'; // Production
+  : 'https://backend-estudio123455-hues-projects.vercel.app/api'; // Production
 
 const TOKEN_KEY = '@event_app_token';
 

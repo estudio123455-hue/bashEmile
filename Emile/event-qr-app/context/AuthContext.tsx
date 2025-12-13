@@ -15,7 +15,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // API Configuration
 const API_BASE_URL = __DEV__ 
   ? 'http://localhost:3001/api'
-  : 'https://event-qr-pputt9ob4-estudio123455-hues-projects.vercel.app/api';
+  : 'https://backend-estudio123455-hues-projects.vercel.app/api';
 
 // Sync user with backend
 const syncUserWithBackend = async (firebaseUser: FirebaseUser): Promise<User | null> => {
