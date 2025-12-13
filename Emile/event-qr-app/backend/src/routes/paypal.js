@@ -59,17 +59,33 @@ router.post('/create-order', auth, async (req, res) => {
     }
 
     // Calculate fees (use ticketPrice, fallback to price for backwards compatibility)
-    const ticketPrice = parseFloat(event.ticketPrice) || parseFloat(event.price) || 0;
-    console.log('[PAYPAL] Event:', event.id, 'ticketPrice:', event.ticketPrice, 'price:', event.price, 'parsed:', ticketPrice, 'Quantity:', quantity);
+    // Handle all possible formats: number, string, undefined
+    let ticketPrice = 0;
+    if (typeof event.ticketPrice === 'number') {
+      ticketPrice = event.ticketPrice;
+    } else if (typeof event.ticketPrice === 'string') {
+      ticketPrice = parseFloat(event.ticketPrice);
+    } else if (typeof event.price === 'number') {
+      ticketPrice = event.price;
+    } else if (typeof event.price === 'string') {
+      ticketPrice = parseFloat(event.price);
+    }
+    
+    console.log('[PAYPAL] Event:', event.id);
+    console.log('[PAYPAL] Raw ticketPrice:', event.ticketPrice, 'type:', typeof event.ticketPrice);
+    console.log('[PAYPAL] Raw price:', event.price, 'type:', typeof event.price);
+    console.log('[PAYPAL] Parsed ticketPrice:', ticketPrice, 'Quantity:', quantity);
     
     if (isNaN(ticketPrice) || ticketPrice <= 0) {
+      console.error('[PAYPAL] Invalid ticket price detected!');
       return res.status(400).json({
         success: false,
-        error: 'Invalid ticket price',
+        error: `Invalid ticket price: ${ticketPrice}. Event data: ticketPrice=${event.ticketPrice}, price=${event.price}`,
       });
     }
     
     const fees = calculateFees(ticketPrice, quantity);
+    console.log('[PAYPAL] Calculated fees:', fees);
 
     // Create internal order
     const orderId = `ORD-${Date.now()}-${uuidv4().substring(0, 8)}`;
