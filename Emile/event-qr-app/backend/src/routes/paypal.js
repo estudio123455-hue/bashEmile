@@ -59,8 +59,16 @@ router.post('/create-order', auth, async (req, res) => {
     }
 
     // Calculate fees (use ticketPrice, fallback to price for backwards compatibility)
-    const ticketPrice = event.ticketPrice || event.price || 0;
-    console.log('[PAYPAL] Event price:', ticketPrice, 'Quantity:', quantity);
+    const ticketPrice = parseFloat(event.ticketPrice) || parseFloat(event.price) || 0;
+    console.log('[PAYPAL] Event:', event.id, 'ticketPrice:', event.ticketPrice, 'price:', event.price, 'parsed:', ticketPrice, 'Quantity:', quantity);
+    
+    if (isNaN(ticketPrice) || ticketPrice <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid ticket price',
+      });
+    }
+    
     const fees = calculateFees(ticketPrice, quantity);
 
     // Create internal order
