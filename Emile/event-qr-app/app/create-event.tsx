@@ -3,17 +3,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -342,13 +342,14 @@ export default function CreateEventScreen() {
           )}
 
           {/* Botón publicar */}
-          <Pressable
+          <TouchableOpacity
             style={[styles.submitBtn, isLoading && styles.submitBtnDisabled]}
             onPress={() => {
               console.log('[SUBMIT-BTN] Button pressed!');
               handleSubmit();
             }}
             disabled={isLoading}
+            activeOpacity={0.8}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
@@ -358,7 +359,7 @@ export default function CreateEventScreen() {
                 <Text style={styles.submitBtnText}>Publicar evento gratis</Text>
               </>
             )}
-          </Pressable>
+          </TouchableOpacity>
 
           <Text style={styles.disclaimer}>
             Al publicar, aceptas los términos de servicio de EventQR
