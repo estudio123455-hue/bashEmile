@@ -10,21 +10,36 @@ const router = express.Router();
 // Exchange rate COP to USD (in production, use a real API)
 const COP_TO_USD_RATE = 0.00025;
 
-// Calculate fees
+// Helper: Convert to money string with 2 decimals (PayPal requirement)
+const toMoney = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return '0.00';
+  return num.toFixed(2);
+};
+
+// Calculate fees with validation
 const calculateFees = (amountCOP, quantity) => {
-  const subtotalCOP = amountCOP * quantity;
-  const subtotalUSD = Math.round(subtotalCOP * COP_TO_USD_RATE * 100) / 100;
-  const paypalFee = Math.round((subtotalUSD * 0.0499 + 0.49) * 100) / 100;
-  const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || 8) / 100;
-  const platformFee = Math.round(subtotalUSD * platformFeePercent * 100) / 100;
-  const totalUSD = Math.round((subtotalUSD + paypalFee) * 100) / 100;
+  const price = Number(amountCOP);
+  const qty = Number(quantity);
+  
+  if (!Number.isFinite(price) || !Number.isFinite(qty)) {
+    console.error('[PAYPAL] Invalid inputs to calculateFees:', { amountCOP, quantity });
+    return null;
+  }
+  
+  const subtotalCOP = price * qty;
+  const subtotalUSD = subtotalCOP * COP_TO_USD_RATE;
+  const paypalFee = subtotalUSD * 0.0499 + 0.49;
+  const platformFeePercent = Number(process.env.PLATFORM_FEE_PERCENT || 8) / 100;
+  const platformFee = subtotalUSD * platformFeePercent;
+  const totalUSD = subtotalUSD + paypalFee;
 
   return {
-    subtotalCOP,
-    subtotalUSD,
-    paypalFee,
-    platformFee,
-    totalUSD,
+    subtotalCOP: Math.round(subtotalCOP),
+    subtotalUSD: Math.round(subtotalUSD * 100) / 100,
+    paypalFee: Math.round(paypalFee * 100) / 100,
+    platformFee: Math.round(platformFee * 100) / 100,
+    totalUSD: Math.round(totalUSD * 100) / 100,
   };
 };
 
@@ -58,34 +73,36 @@ router.post('/create-order', auth, async (req, res) => {
       });
     }
 
-    // Calculate fees (use ticketPrice, fallback to price for backwards compatibility)
-    // Handle all possible formats: number, string, undefined
-    let ticketPrice = 0;
-    if (typeof event.ticketPrice === 'number') {
-      ticketPrice = event.ticketPrice;
-    } else if (typeof event.ticketPrice === 'string') {
-      ticketPrice = parseFloat(event.ticketPrice);
-    } else if (typeof event.price === 'number') {
-      ticketPrice = event.price;
-    } else if (typeof event.price === 'string') {
-      ticketPrice = parseFloat(event.price);
-    }
+    // Get ticket price - use Number() for robust conversion
+    const ticketPrice = Number(event.ticketPrice) || Number(event.price) || 0;
+    const qty = Number(quantity) || 1;
     
-    console.log('[PAYPAL] Event:', event.id);
-    console.log('[PAYPAL] Raw ticketPrice:', event.ticketPrice, 'type:', typeof event.ticketPrice);
-    console.log('[PAYPAL] Raw price:', event.price, 'type:', typeof event.price);
-    console.log('[PAYPAL] Parsed ticketPrice:', ticketPrice, 'Quantity:', quantity);
+    console.log('[PAYPAL] === CALCULATION START ===');
+    console.log('[PAYPAL] Event ID:', event.id);
+    console.log('[PAYPAL] Raw ticketPrice:', event.ticketPrice, '| Raw price:', event.price);
+    console.log('[PAYPAL] Parsed ticketPrice:', ticketPrice, '| Quantity:', qty);
     
-    if (isNaN(ticketPrice) || ticketPrice <= 0) {
-      console.error('[PAYPAL] Invalid ticket price detected!');
+    // Validate with Number.isFinite (catches NaN, Infinity, etc)
+    if (!Number.isFinite(ticketPrice) || ticketPrice <= 0) {
+      console.error('[PAYPAL] INVALID PRICE DETECTED:', ticketPrice);
       return res.status(400).json({
         success: false,
-        error: `Invalid ticket price: ${ticketPrice}. Event data: ticketPrice=${event.ticketPrice}, price=${event.price}`,
+        error: `Invalid ticket price. Raw values: ticketPrice=${event.ticketPrice}, price=${event.price}`,
       });
     }
     
-    const fees = calculateFees(ticketPrice, quantity);
-    console.log('[PAYPAL] Calculated fees:', fees);
+    const fees = calculateFees(ticketPrice, qty);
+    
+    // Check if calculateFees returned null (invalid inputs)
+    if (!fees) {
+      console.error('[PAYPAL] calculateFees returned null');
+      return res.status(400).json({
+        success: false,
+        error: 'Error calculating fees',
+      });
+    }
+    
+    console.log('[PAYPAL] Fees calculated:', JSON.stringify(fees));
 
     // Create internal order
     const orderId = `ORD-${Date.now()}-${uuidv4().substring(0, 8)}`;
@@ -106,35 +123,46 @@ router.post('/create-order', auth, async (req, res) => {
     const paypalClient = client();
     
     if (paypalClient) {
+      // Calculate unit price per ticket
+      const unitPrice = fees.subtotalUSD / qty;
+      
+      // Log all values that will be sent to PayPal
+      console.log('[PAYPAL] === VALUES FOR PAYPAL ===');
+      console.log('[PAYPAL] totalUSD:', toMoney(fees.totalUSD));
+      console.log('[PAYPAL] subtotalUSD:', toMoney(fees.subtotalUSD));
+      console.log('[PAYPAL] paypalFee:', toMoney(fees.paypalFee));
+      console.log('[PAYPAL] unitPrice:', toMoney(unitPrice));
+      console.log('[PAYPAL] quantity:', qty.toString());
+      
       const request = new paypal.orders.OrdersCreateRequest();
       request.prefer('return=representation');
       request.requestBody({
         intent: 'CAPTURE',
         purchase_units: [{
           reference_id: orderId,
-          description: `${quantity}x ${event.title}`,
+          description: `${qty}x ${event.title}`,
           amount: {
             currency_code: 'USD',
-            value: fees.totalUSD.toFixed(2),
+            value: toMoney(fees.totalUSD),
             breakdown: {
               item_total: {
                 currency_code: 'USD',
-                value: fees.subtotalUSD.toFixed(2),
+                value: toMoney(fees.subtotalUSD),
               },
               handling: {
                 currency_code: 'USD',
-                value: fees.paypalFee.toFixed(2),
+                value: toMoney(fees.paypalFee),
               },
             },
           },
           items: [{
-            name: event.title,
-            description: `Entrada para ${event.title}`,
+            name: event.title.substring(0, 127),
+            description: `Entrada para ${event.title}`.substring(0, 127),
             unit_amount: {
               currency_code: 'USD',
-              value: (fees.subtotalUSD / quantity).toFixed(2),
+              value: toMoney(unitPrice),
             },
-            quantity: quantity.toString(),
+            quantity: qty.toString(),
             category: 'DIGITAL_GOODS',
           }],
         }],
@@ -150,6 +178,7 @@ router.post('/create-order', auth, async (req, res) => {
       const paypalOrder = await paypalClient.execute(request);
       order.paypalOrderId = paypalOrder.result.id;
       order.approvalUrl = paypalOrder.result.links.find(l => l.rel === 'approve')?.href;
+      console.log('[PAYPAL] Order created successfully:', order.paypalOrderId);
     } else {
       // Demo mode without PayPal
       order.paypalOrderId = `DEMO-${orderId}`;
