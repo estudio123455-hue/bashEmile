@@ -13,7 +13,7 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -83,17 +83,45 @@ export default function CreateEventScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
-
-    if (!auth.currentUser) {
-      Alert.alert('Error', 'Debes iniciar sesión para publicar eventos');
+    console.log('[CREATE-EVENT] handleSubmit called');
+    console.log('[CREATE-EVENT] Form data:', { title, description, date, time, location, category, ticketPrice, capacity });
+    
+    if (!validateForm()) {
+      console.log('[CREATE-EVENT] Validation failed');
       return;
     }
+    console.log('[CREATE-EVENT] Validation passed');
+
+    if (!auth.currentUser) {
+      console.log('[CREATE-EVENT] No user logged in');
+      if (Platform.OS === 'web') {
+        alert('Debes iniciar sesión para publicar eventos');
+      } else {
+        Alert.alert('Error', 'Debes iniciar sesión para publicar eventos');
+      }
+      return;
+    }
+    console.log('[CREATE-EVENT] User authenticated:', auth.currentUser.uid);
 
     setIsLoading(true);
 
     try {
+      console.log('[CREATE-EVENT] Getting ID token...');
       const idToken = await auth.currentUser.getIdToken();
+      console.log('[CREATE-EVENT] Token obtained, sending request to:', API_BASE_URL);
+
+      const body = {
+        title: title.trim(),
+        description: description.trim(),
+        date,
+        time,
+        location: location.trim(),
+        category,
+        ticketPrice: parseFloat(ticketPrice),
+        capacity: parseInt(capacity),
+        imageUrl: imageUrl || undefined,
+      };
+      console.log('[CREATE-EVENT] Request body:', body);
 
       const response = await fetch(`${API_BASE_URL}/events`, {
         method: 'POST',
@@ -101,33 +129,35 @@ export default function CreateEventScreen() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`,
         },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim(),
-          date,
-          time,
-          location: location.trim(),
-          category,
-          ticketPrice: parseFloat(ticketPrice),
-          capacity: parseInt(capacity),
-          imageUrl: imageUrl || undefined,
-        }),
+        body: JSON.stringify(body),
       });
 
+      console.log('[CREATE-EVENT] Response status:', response.status);
       const data = await response.json();
+      console.log('[CREATE-EVENT] Response data:', data);
 
       if (data.success) {
-        Alert.alert(
-          '¡Evento publicado!',
-          'Tu evento ya está visible en el marketplace. Solo pagarás comisión cuando vendas tickets.',
-          [{ text: 'Ver eventos', onPress: () => router.replace('/(tabs)') }]
-        );
+        console.log('[CREATE-EVENT] Event created successfully!');
+        if (Platform.OS === 'web') {
+          alert('¡Evento publicado! Tu evento ya está visible en el marketplace.');
+          window.location.href = '/';
+        } else {
+          Alert.alert(
+            '¡Evento publicado!',
+            'Tu evento ya está visible en el marketplace. Solo pagarás comisión cuando vendas tickets.',
+            [{ text: 'Ver eventos', onPress: () => router.replace('/(tabs)') }]
+          );
+        }
       } else {
         throw new Error(data.error || 'Error al publicar evento');
       }
     } catch (error: any) {
-      console.error('Error creating event:', error);
-      Alert.alert('Error', error.message || 'No se pudo publicar el evento');
+      console.error('[CREATE-EVENT] Error:', error);
+      if (Platform.OS === 'web') {
+        alert('Error: ' + (error.message || 'No se pudo publicar el evento'));
+      } else {
+        Alert.alert('Error', error.message || 'No se pudo publicar el evento');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -312,9 +342,12 @@ export default function CreateEventScreen() {
           )}
 
           {/* Botón publicar */}
-          <TouchableOpacity
+          <Pressable
             style={[styles.submitBtn, isLoading && styles.submitBtnDisabled]}
-            onPress={handleSubmit}
+            onPress={() => {
+              console.log('[SUBMIT-BTN] Button pressed!');
+              handleSubmit();
+            }}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -325,7 +358,7 @@ export default function CreateEventScreen() {
                 <Text style={styles.submitBtnText}>Publicar evento gratis</Text>
               </>
             )}
-          </TouchableOpacity>
+          </Pressable>
 
           <Text style={styles.disclaimer}>
             Al publicar, aceptas los términos de servicio de EventQR
