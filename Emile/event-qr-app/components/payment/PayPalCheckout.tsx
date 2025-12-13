@@ -1,3 +1,4 @@
+import { auth } from '@/config/firebase';
 import { getPriceSummary } from '@/services/paypal';
 import { Event } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
