@@ -47,11 +47,18 @@ export default function PayPalCheckout({
       : 'https://backend-estudio123455-hues-projects.vercel.app/api';
 
     try {
+      // Get auth token
+      if (!auth.currentUser) {
+        throw new Error('Debes iniciar sesión para comprar tickets');
+      }
+      const idToken = await auth.currentUser.getIdToken();
+
       // 1. Crear orden en el backend
       const createResponse = await fetch(`${API_BASE_URL}/paypal/create-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           eventId: event.id,
