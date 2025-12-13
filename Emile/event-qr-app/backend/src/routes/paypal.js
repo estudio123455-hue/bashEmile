@@ -158,9 +158,17 @@ router.post('/create-order', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Create order error:', error);
+    console.error('Error details:', error.message);
+    if (error.statusCode) {
+      console.error('PayPal status code:', error.statusCode);
+    }
+    if (error.result) {
+      console.error('PayPal result:', JSON.stringify(error.result, null, 2));
+    }
     res.status(500).json({
       success: false,
       error: 'Error creating order',
+      details: error.message,
     });
   }
 });
