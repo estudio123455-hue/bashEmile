@@ -295,6 +295,8 @@ const eventService = {
 
   async create(eventData) {
     const db = getDb();
+    console.log('[EVENT-CREATE] Creating event, db available:', !!db);
+    
     const event = {
       ...eventData,
       createdAt: new Date().toISOString(),
@@ -302,12 +304,16 @@ const eventService = {
     };
     
     if (db) {
+      console.log('[EVENT-CREATE] Saving to Firestore...');
       const docRef = await db.collection(COLLECTIONS.EVENTS).add(event);
+      console.log('[EVENT-CREATE] Saved with ID:', docRef.id);
       return { id: docRef.id, ...event };
     } else {
+      console.log('[EVENT-CREATE] Using in-memory storage (data will be lost on restart!)');
       const id = uuidv4();
       const newEvent = { id, ...event };
       inMemoryStorage.events.push(newEvent);
+      console.log('[EVENT-CREATE] In-memory events count:', inMemoryStorage.events.length);
       return newEvent;
     }
   },
