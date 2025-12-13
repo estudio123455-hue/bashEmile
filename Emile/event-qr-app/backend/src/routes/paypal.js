@@ -48,123 +48,74 @@ router.post('/create-order', auth, async (req, res) => {
   try {
     const { eventId, quantity } = req.body;
 
-    // Validate input
-    if (!eventId || !quantity || quantity < 1 || quantity > 10) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid event ID or quantity',
-      });
+    // 1. Validate eventId
+    if (!eventId) {
+      return res.status(400).json({ success: false, error: 'eventId required' });
     }
 
-    // Find event
+    // 2. Parse and validate quantity FIRST
+    const qty = Number(quantity);
+    if (!Number.isFinite(qty) || qty < 1 || qty > 10) {
+      return res.status(400).json({ success: false, error: 'Invalid quantity (must be 1-10)' });
+    }
+
+    // 3. Find event
     const event = await eventService.findById(eventId);
     if (!event) {
-      return res.status(404).json({
-        success: false,
-        error: 'Event not found',
-      });
+      return res.status(404).json({ success: false, error: 'Event not found' });
     }
 
-    // Check availability
-    if (event.availableTickets < quantity) {
-      return res.status(400).json({
-        success: false,
-        error: 'Not enough tickets available',
-      });
+    // 4. Check availability
+    if (event.availableTickets < qty) {
+      return res.status(400).json({ success: false, error: 'Not enough tickets available' });
     }
 
-    // Get ticket price - use Number() for robust conversion
+    // 5. Get and validate ticket price
     const ticketPrice = Number(event.ticketPrice) || Number(event.price) || 0;
-    const qty = Number(quantity) || 1;
-    
-    console.log('[PAYPAL] === CALCULATION START ===');
-    console.log('[PAYPAL] Event ID:', event.id);
-    console.log('[PAYPAL] Raw ticketPrice:', event.ticketPrice, '| Raw price:', event.price);
-    console.log('[PAYPAL] Parsed ticketPrice:', ticketPrice, '| Quantity:', qty);
-    
-    // Validate with Number.isFinite (catches NaN, Infinity, etc)
     if (!Number.isFinite(ticketPrice) || ticketPrice <= 0) {
-      console.error('[PAYPAL] INVALID PRICE DETECTED:', ticketPrice);
-      return res.status(400).json({
-        success: false,
-        error: `Invalid ticket price. Raw values: ticketPrice=${event.ticketPrice}, price=${event.price}`,
-      });
+      console.error('[PAYPAL] Invalid price:', { raw: event.ticketPrice, parsed: ticketPrice });
+      return res.status(400).json({ success: false, error: 'Invalid ticket price' });
     }
-    
-    const fees = calculateFees(ticketPrice, qty);
-    
-    // Check if calculateFees returned null (invalid inputs)
-    if (!fees) {
-      console.error('[PAYPAL] calculateFees returned null');
-      return res.status(400).json({
-        success: false,
-        error: 'Error calculating fees',
-      });
-    }
-    
-    console.log('[PAYPAL] Fees calculated:', JSON.stringify(fees));
 
-    // Create internal order
+    // 6. Calculate fees
+    const fees = calculateFees(ticketPrice, qty);
+    if (!fees || !Number.isFinite(fees.totalUSD)) {
+      console.error('[PAYPAL] Invalid fees:', fees);
+      return res.status(500).json({ success: false, error: 'Fee calculation failed' });
+    }
+
+    // Log calculation for debugging
+    console.log('[PAYPAL] Calculation:', { ticketPrice, qty, fees });
+
+    // 7. Create internal order
     const orderId = `ORD-${Date.now()}-${uuidv4().substring(0, 8)}`;
-    
     const order = {
       orderId,
       userId: req.userId,
       eventId: event.id,
       eventTitle: event.title,
-      quantity,
+      quantity: qty,
       ...fees,
       status: 'created',
       paypalOrderId: null,
       createdAt: new Date().toISOString(),
     };
 
-    // Try to create PayPal order if configured
+    // 8. Create PayPal order
     const paypalClient = client();
     
     if (paypalClient) {
-      // Calculate unit price per ticket
-      const unitPrice = fees.subtotalUSD / qty;
-      
-      // Log all values that will be sent to PayPal
-      console.log('[PAYPAL] === VALUES FOR PAYPAL ===');
-      console.log('[PAYPAL] totalUSD:', toMoney(fees.totalUSD));
-      console.log('[PAYPAL] subtotalUSD:', toMoney(fees.subtotalUSD));
-      console.log('[PAYPAL] paypalFee:', toMoney(fees.paypalFee));
-      console.log('[PAYPAL] unitPrice:', toMoney(unitPrice));
-      console.log('[PAYPAL] quantity:', qty.toString());
-      
+      // Simplified PayPal request (no breakdown to avoid math errors)
       const request = new paypal.orders.OrdersCreateRequest();
       request.prefer('return=representation');
       request.requestBody({
         intent: 'CAPTURE',
         purchase_units: [{
           reference_id: orderId,
-          description: `${qty}x ${event.title}`,
           amount: {
             currency_code: 'USD',
-            value: toMoney(fees.totalUSD),
-            breakdown: {
-              item_total: {
-                currency_code: 'USD',
-                value: toMoney(fees.subtotalUSD),
-              },
-              handling: {
-                currency_code: 'USD',
-                value: toMoney(fees.paypalFee),
-              },
-            },
+            value: fees.totalUSD.toFixed(2),
           },
-          items: [{
-            name: event.title.substring(0, 127),
-            description: `Entrada para ${event.title}`.substring(0, 127),
-            unit_amount: {
-              currency_code: 'USD',
-              value: toMoney(unitPrice),
-            },
-            quantity: qty.toString(),
-            category: 'DIGITAL_GOODS',
-          }],
         }],
         application_context: {
           brand_name: 'EventQR',
@@ -175,12 +126,14 @@ router.post('/create-order', auth, async (req, res) => {
         },
       });
 
+      console.log('[PAYPAL] Sending to PayPal:', { totalUSD: fees.totalUSD.toFixed(2) });
+
       const paypalOrder = await paypalClient.execute(request);
       order.paypalOrderId = paypalOrder.result.id;
       order.approvalUrl = paypalOrder.result.links.find(l => l.rel === 'approve')?.href;
-      console.log('[PAYPAL] Order created successfully:', order.paypalOrderId);
+      console.log('[PAYPAL] Order created:', order.paypalOrderId);
     } else {
-      // Demo mode without PayPal
+      // Demo mode
       order.paypalOrderId = `DEMO-${orderId}`;
       order.approvalUrl = null;
     }
@@ -206,18 +159,11 @@ router.post('/create-order', auth, async (req, res) => {
           time: event.time,
           location: event.location,
         },
-        quantity,
+        quantity: qty,
       },
     });
   } catch (error) {
-    console.error('Create order error:', error);
-    console.error('Error details:', error.message);
-    if (error.statusCode) {
-      console.error('PayPal status code:', error.statusCode);
-    }
-    if (error.result) {
-      console.error('PayPal result:', JSON.stringify(error.result, null, 2));
-    }
+    console.error('[PAYPAL] Error:', error.message);
     res.status(500).json({
       success: false,
       error: 'Error creating order',
