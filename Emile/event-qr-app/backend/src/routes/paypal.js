@@ -58,8 +58,10 @@ router.post('/create-order', auth, async (req, res) => {
       });
     }
 
-    // Calculate fees
-    const fees = calculateFees(event.price, quantity);
+    // Calculate fees (use ticketPrice, fallback to price for backwards compatibility)
+    const ticketPrice = event.ticketPrice || event.price || 0;
+    console.log('[PAYPAL] Event price:', ticketPrice, 'Quantity:', quantity);
+    const fees = calculateFees(ticketPrice, quantity);
 
     // Create internal order
     const orderId = `ORD-${Date.now()}-${uuidv4().substring(0, 8)}`;
